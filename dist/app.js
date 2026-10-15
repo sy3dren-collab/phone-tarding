@@ -506,7 +506,19 @@ $('randomDay').onclick=async()=>{
  if(landscapeViewport.addEventListener)landscapeViewport.addEventListener('change',syncChartFullscreen);
  else landscapeViewport.addListener(syncChartFullscreen);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartFullscreen){e.preventDefault();setChartFullscreen(false);}});
- // Reconcile iOS viewport geometry after rotation settles, without changing page zoom.
+ // Keep the app UI at 1x; chart gestures implement their own independent zoom.
+ const appViewport=document.querySelector('meta[name="viewport"]');
+ const appViewportPolicy='width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';
+ function enforceAppScale(){appViewport.setAttribute('content',appViewportPolicy);}
+ function blockNativeAppZoom(e){
+  if(e.target.closest?.('.app')&&e.cancelable)e.preventDefault();
+ }
+ document.addEventListener('gesturestart',blockNativeAppZoom,{capture:true,passive:false});
+ document.addEventListener('gesturechange',blockNativeAppZoom,{capture:true,passive:false});
+ document.addEventListener('touchstart',e=>{
+  if(e.touches.length>1&&e.target.closest?.('.app')&&!$('chartWrap').contains(e.target)&&e.cancelable)e.preventDefault();
+ },{capture:true,passive:false});
+ // Reconcile layout geometry after rotation settles and reassert the page-scale policy.
  let viewportFrame=0,viewportFollowup=0;
  function syncAppViewport(){
   cancelAnimationFrame(viewportFrame);
@@ -516,12 +528,13 @@ $('randomDay').onclick=async()=>{
   });
  }
  function handleViewportRotation(){
+  enforceAppScale();
   finishHorizontalDrag(true);finishStopDrag(true);
   pointers.clear();gesture=null;lastAxisTap=null;horizontalTap=null;canvas.style.cursor='default';
   const active=document.activeElement;
   if(active?.matches('input,select,textarea'))active.blur();
   update();syncAppViewport();clearTimeout(viewportFollowup);
-  viewportFollowup=setTimeout(syncAppViewport,350);
+  viewportFollowup=setTimeout(()=>{enforceAppScale();syncAppViewport();},350);
  }
  window.addEventListener('resize',syncAppViewport,{passive:true});
  window.addEventListener('orientationchange',handleViewportRotation,{passive:true});

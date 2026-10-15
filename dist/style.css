@@ -255,8 +255,10 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
  body.chart-fullscreen #exitFullscreen{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:calc(env(safe-area-inset-right) + 8px);z-index:20;display:flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:5px;border:1px solid #25303e;border-radius:8px;background:#090d14b8}
 }
 
-/* iOS rotation: prevent text inflation and control-focus zoom, keep browser pinch accessible. */
+/* iOS rotation: fixed-scale application chrome; canvas retains its own pinch gestures. */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg)}
 html,body{touch-action:manipulation;background-color:var(--bg)}
 .speed-control select,.field select,.field input,.ma-row input[type=number],.upload input,textarea{font-size:16px}
 .speed-control select{padding-inline:2px}
+
+.app{touch-action:pan-x pan-y}
