@@ -147,8 +147,8 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  const todayStart=series[tf].map[dayStart],count=wholeDayFit?Math.max(12,vis.length-todayStart+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
  const lower=dayOnly||wholeDayFit?todayStart:0;
  pan=Math.max(-(count-5),Math.min(pan,Math.max(0,vis.length-lower-1)));
- const virtualEnd=wholeDayFit?vis.length:Math.max(lower+1,vis.length-Math.round(pan)),end=Math.min(vis.length,virtualEnd);
- const plotStart=wholeDayFit?todayStart:virtualEnd-count,start=Math.max(lower,plotStart),dx=plotW/count,x=n=>left+(n-plotStart+.5)*dx;
+ const virtualEnd=wholeDayFit?vis.length:Math.max(lower+1,vis.length-pan),end=Math.min(vis.length,Math.ceil(virtualEnd));
+ const plotStart=wholeDayFit?todayStart:virtualEnd-count,start=Math.max(lower,Math.floor(plotStart)),dx=plotW/count,x=n=>left+(n-plotStart+.5)*dx;
  const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
@@ -450,21 +450,70 @@ $('randomDay').onclick=async()=>{
  function makeGesture(p,kind=axisAt(p.x,p.y)){return{kind,x:p.x,y:p.y,pan,count:viewCount,dist:0,moved:false,range:priceRange?[...priceRange]:drawingMap?[drawingMap.lo,drawingMap.hi]:null,plotH:drawingMap?.plotH||1,dx:drawingMap?.dx||8}}
  function translatePrice(range,dy,height){const shift=dy*(range[1]-range[0])/Math.max(1,height);return[range[0]+shift,range[1]+shift]}
  function scalePrice(range,dy){const mid=(range[0]+range[1])/2,span=Math.max(2,Math.min(100000,(range[1]-range[0])*Math.exp(dy/180)));return[mid-span/2,mid+span/2]}
+ // Adopt the rendered viewport when a gesture leaves full-day fit. The explicit
+ // full-day toggle still restores its saved manual scale and follows latest.
+ function leaveFitForGesture(){
+  if(!wholeDayFit||!drawingMap)return;
+  const m=drawingMap;
+  viewCount=(m.w-m.left-m.right)/m.dx;
+  pan=chartType==='intraday'?(intradayPoints().at(-1).t+MIN/2-m.to)/MIN:getVisibleSeries().length-m.plotStart-viewCount;
+  manualPriceRange=[m.lo,m.hi];manualPan=true;wholeDayFit=false;
+  delete timeframeFitKeys[tf];update();
+ }
+ function beginPinch(){
+  horizontalTap=null;leaveFitForGesture();
+  const p=[...pointers.values()],mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+  gesture=makeGesture(mid,'pinch');gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true;
+  if(!drawingMap)return;
+  const m=drawingMap,r=canvas.getBoundingClientRect();
+  gesture.count=(m.w-m.left-m.right)/m.dx;
+  gesture.anchorX=(mid.x-r.left-m.left)/m.dx;
+  gesture.anchorPrice=m.hi-(mid.y-r.top-m.top)/m.plotH*(m.hi-m.lo);
+  gesture.origin=chartType==='intraday'?m.from/MIN:m.plotStart;
+  gesture.left=r.left+m.left;gesture.top=r.top+m.top;gesture.width=m.w-m.left-m.right;
+ }
  canvas.addEventListener('pointerdown',e=>{
   if(stopDrag||horizontalDrag)return;if(e.button!==undefined&&e.button!==0)return;
-  const line=horizontalAt(e.clientX,e.clientY),editing=horizontalLines().some(l=>l.locked===false);
-  // A tap that locks/unlocks an annotation must not change the chart viewport.
-  if(!line&&!editing)leaveWholeDay();
+  const line=horizontalAt(e.clientX,e.clientY);
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
   const p={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,p);
   if(pointers.size===1){gesture=makeGesture(p);gesture.horizontalLine=line;gesture.downAt=Date.now();}
-  if(pointers.size===2){
-   horizontalTap=null;leaveWholeDay();const p=[...pointers.values()];gesture=makeGesture(p[0],'pinch');
-   gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true;
-  }
+  if(pointers.size===2)beginPinch();
   canvas.style.cursor=gesture.kind==='price'?'ns-resize':gesture.kind==='time'?'ew-resize':'grabbing';
  });
- canvas.addEventListener('pointermove',e=>{if(stopDrag||horizontalDrag){e.preventDefault();return;}if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return}e.preventDefault();if(wholeDayFit&&Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>3){leaveWholeDay();gesture.count=viewCount;gesture.pan=pan;if(manualPriceRange)gesture.range=[...manualPriceRange];}pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size>=2){const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*gesture.dist/Math.max(10,dist))));if(gesture.range){const mid=(gesture.range[0]+gesture.range[1])/2,span=Math.max(2,Math.min(100000,(gesture.range[1]-gesture.range[0])*gesture.dist/Math.max(10,dist)));manualPriceRange=[mid-span/2,mid+span/2];}manualPan=false;pan=0;gesture.moved=true}else{const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(Math.hypot(dx,dy)>3)gesture.moved=true;if(gesture.moved){if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true}}}priceRange=null;selectedBar=null;requestDraw()});
+ canvas.addEventListener('pointermove',e=>{
+  if(stopDrag||horizontalDrag){e.preventDefault();return;}
+  if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return;}
+  e.preventDefault();
+  if(wholeDayFit&&Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>3){
+   leaveFitForGesture();gesture.count=viewCount;gesture.pan=pan;
+   if(manualPriceRange)gesture.range=[...manualPriceRange];
+  }
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size>=2){
+   if(gesture.origin===undefined)return;
+   const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),ratio=gesture.dist/Math.max(1,dist);
+   const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+   viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,gesture.count*ratio));
+   const from=gesture.origin+gesture.anchorX-(mid.x-gesture.left)/gesture.width*viewCount;
+   pan=chartType==='intraday'?intradayPoints().at(-1).t/MIN+.5-from-viewCount:getVisibleSeries().length-from-viewCount;
+   if(gesture.range){
+    const span=Math.max(2,Math.min(100000,(gesture.range[1]-gesture.range[0])*ratio));
+    const hi=gesture.anchorPrice+(mid.y-gesture.top)/gesture.plotH*span;
+    manualPriceRange=[hi-span,hi];
+   }
+   manualPan=true;gesture.moved=true;
+  }else{
+   const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;
+   if(Math.hypot(dx,dy)>3)gesture.moved=true;
+   if(gesture.moved){
+    if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);
+    else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));
+    else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true;}
+   }
+  }
+  priceRange=null;selectedBar=null;requestDraw();
+ });
  function finishPointer(e){
   if(gesture&&!gesture.moved&&drawingMap){
    const handled=Date.now()-(gesture.downAt||0)<380&&tapHorizontalCanvas(e,gesture);
