@@ -87,9 +87,12 @@ async function togglePlay(){
   const dates=Array.from($('datePick').options,o=>o.value),at=dates.indexOf(selectedDay),next=at>=0?dates[at+1]:null;
   if(!next){notify('已到資料最後一天，可按隨機或重播繼續練習');return;}
   // Continuing a session keeps the account history; selecting/randomizing a day still resets it.
-  const history={realized,fills:fills.slice()};
+  const history={realized,fills:fills.slice(),lines:horizontalLines().map(l=>({...l,locked:true}))};
   if(builtin){if(!await loadBuiltin(next))return;}else setDay(next);
   realized=history.realized;fills=history.fills;
+  const currentLines=horizontalLines(),lineIds=new Set(currentLines.map(l=>l.id));
+  const carried=history.lines.filter(l=>!lineIds.has(l.id));
+  if(carried.length){horizontalBook[horizontalKey()]=[...currentLines,...carried];saveHorizontalLines();}
   notify('接續 '+next+' · 從開盤播放');
  }
  playing=true;prevWall=0;elapsed=0;if(!manualPan)pan=0;selectedBar=null;
@@ -149,6 +152,7 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
+ for(const line of horizontalLines()){lo=Math.min(lo,line.price);hi=Math.max(hi,line.price)}
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average)}if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice)}let pad=Math.max(12,(hi-lo)*.16);lo-=pad;hi+=pad;
  // Manual zoom keeps its span; following shifts the center instead of shrinking candles.
  const required=[lo+pad,hi-pad];
@@ -303,6 +307,7 @@ function drawIntraday(w,h){
  let end=points.findIndex(p=>p.t>to);end=end<0?points.length:Math.min(points.length,end+1);
  const shown=points.slice(first,Math.max(first+1,end));
  let lo=Math.min(...shown.map(p=>p.c)),hi=Math.max(...shown.map(p=>p.c));
+ for(const line of horizontalLines()){lo=Math.min(lo,line.price);hi=Math.max(hi,line.price);}
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average);}
  if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice);}
  const pad=Math.max(12,(hi-lo)*.15);lo-=pad;hi+=pad;
@@ -496,6 +501,29 @@ $('randomDay').onclick=async()=>{
  if(landscapeViewport.addEventListener)landscapeViewport.addEventListener('change',exitOnPortrait);
  else landscapeViewport.addListener(exitOnPortrait);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartFullscreen){e.preventDefault();setChartFullscreen(false);}});
+ // Reconcile iOS viewport geometry after rotation settles, without changing page zoom.
+ let viewportFrame=0,viewportFollowup=0;
+ function syncAppViewport(){
+  cancelAnimationFrame(viewportFrame);
+  viewportFrame=requestAnimationFrame(()=>{
+   document.documentElement.style.setProperty('--app-height',window.innerHeight+'px');
+   priceRange=null;requestDraw();
+  });
+ }
+ function handleViewportRotation(){
+  finishHorizontalDrag(true);finishStopDrag(true);
+  pointers.clear();gesture=null;lastAxisTap=null;horizontalTap=null;canvas.style.cursor='default';
+  const active=document.activeElement;
+  if(active?.matches('input,select,textarea'))active.blur();
+  update();syncAppViewport();clearTimeout(viewportFollowup);
+  viewportFollowup=setTimeout(syncAppViewport,350);
+ }
+ window.addEventListener('resize',syncAppViewport,{passive:true});
+ window.addEventListener('orientationchange',handleViewportRotation,{passive:true});
+ window.addEventListener('pageshow',syncAppViewport,{passive:true});
+ window.visualViewport?.addEventListener('resize',syncAppViewport,{passive:true});
+ if(screen.orientation?.addEventListener)screen.orientation.addEventListener('change',handleViewportRotation);
+ syncAppViewport();
  speedOptions();install(demoData(),'示範行情',true);requestAnimationFrame(tick);restoreReplay();
 
 async function restoreReplay(){
