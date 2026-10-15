@@ -172,3 +172,7 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
 @media(display-mode:standalone){body{-webkit-tap-highlight-color:transparent}}
 
 #wholeDay.selected{color:var(--blue);background:#17283f;border-color:var(--blue)}
+
+.periods[hidden],#intradayLabel[hidden]{display:none}
+#intradayLabel{font-size:12px;color:var(--blue)}
+#lineChart.selected{color:#f4cb69;background:#30291b;border-color:#b48c3b}
