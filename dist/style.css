@@ -182,11 +182,8 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
 .horizontal-line{position:absolute;right:0;height:36px;transform:translateY(-50%);pointer-events:none}
 .horizontal-line[hidden]{display:none}
 .horizontal-line::before{content:"";position:absolute;left:0;right:var(--line-right);top:50%;border-top:1px solid var(--annotation-color);opacity:.8}
-.horizontal-line.selected::before{border-top-width:2px;opacity:1}
-.horizontal-grip,.horizontal-grip:active{position:absolute;inset:0 var(--line-right) 0 0;z-index:3;width:auto;height:36px;min-height:36px;border:0;border-radius:0;padding:0;background:transparent;transform:none;filter:none;pointer-events:auto;cursor:ns-resize;touch-action:none}
-.horizontal-label,.horizontal-label:active{position:absolute;right:0;top:4px;z-index:5;height:28px;min-height:28px;padding:2px 3px;border:1px solid var(--annotation-color);border-radius:4px;background:#111822;color:var(--annotation-color);font-size:10px;transform:none;filter:none;pointer-events:auto;cursor:ns-resize;touch-action:none;font-variant-numeric:tabular-nums}
-.horizontal-remove,.horizontal-remove:active{position:absolute;left:0;top:0;z-index:5;width:36px;height:36px;min-height:36px;padding:0;border:0;border-radius:50%;background:#111822;color:var(--annotation-color);font-size:22px;transform:none;pointer-events:auto;touch-action:manipulation}
-.horizontal-remove[hidden]{display:none}
+.horizontal-line.editable::before{border-top-width:2px;border-top-style:dashed;opacity:1}
+.horizontal-grip,.horizontal-grip:active{position:absolute;inset:0 var(--line-right) 0 0;z-index:3;width:auto;height:36px;min-height:36px;border:0;border-radius:0;padding:0;background:transparent;transform:none;filter:none;pointer-events:none;cursor:ns-resize;touch-action:none}
 .chart-actions{max-width:calc(100% - 44px);flex-wrap:wrap;z-index:7}
 #addHorizontal{color:#a6dfff;border-color:#47728d}
 
@@ -222,4 +219,21 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
  .desk{grid-template-columns:minmax(0,1fr) 140px;gap:3px 6px;padding-inline:5px}
  .playrow{grid-template-columns:62px 42px minmax(54px,1fr) 40px 40px;gap:3px}
  .metrics>div{gap:4px}.metrics small{font-size:9px}
+}
+
+.horizontal-line.editable .horizontal-grip{pointer-events:auto}
+
+/* Reduce landscape dock height without changing any numeric font sizes. */
+@media (orientation:landscape) and (max-height:500px){
+ .desk{grid-template-rows:auto 40px;gap:1px 6px;padding:1px 5px 2px}
+ .playrow button,.speed-control select,.traderow button{min-height:40px}
+}
+@media (orientation:landscape) and (max-height:500px) and (min-width:760px){
+ .desk{grid-template-columns:minmax(170px,.8fr) minmax(240px,1.3fr) minmax(140px,.7fr);grid-template-rows:44px;column-gap:4px}
+ .metrics{grid-column:1;grid-row:1;gap:4px}
+ .metrics>div,.metrics>div:nth-child(n+2){flex-direction:column;align-items:flex-start;justify-content:center;flex-wrap:nowrap;gap:0}
+ .metrics>div+div{padding-left:4px}
+ .playrow{grid-column:2;grid-row:1;grid-template-columns:60px 38px minmax(54px,1fr) 38px 38px;gap:3px}
+ .traderow{grid-column:3;grid-row:1;gap:4px}
+ .playrow button,.speed-control select,.traderow button{min-height:44px}
 }

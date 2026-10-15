@@ -5,7 +5,7 @@ let rows=[], series={}, idx=-1, tf=5, selectedDay='', dayStart=0, dayEnd=-1, liv
 let mode='single', playing=false, elapsed=0, prevWall=0, singleMs=1000, dynamicRate=8;
 let position=0, average=0, realized=0, fills=[], multiplier=10, cost=23, slippage=5;
 let stopPrice=null,stopDrag=null;
-let horizontalBook={},horizontalSequence=0,horizontalDrag=null,selectedHorizontal=null;
+let horizontalBook={},horizontalSequence=0,horizontalDrag=null,horizontalTap=null;
 const horizontalElements=new Map();let horizontalRenderedKey=null;
 let sourceName='示範行情', demoMode=true, viewCount=45, pan=0, selectedBar=null, priceRange=null;
 let ma=[{on:false,p:5,color:'#ffce5c'},{on:false,p:10,color:'#71baff'},{on:false,p:20,color:'#d3a0ff'}];
@@ -96,7 +96,7 @@ async function togglePlay(){
 }
 function changeMode(next){if(mode===next)return;if(next==='single'&&live){checkStopPath(rows[live.i],live.progress,1);idx=live.i;live=null;endCheck()}mode=next;elapsed=0;prevWall=0;priceRange=null;speedOptions();update()}
 function speedOptions(){const opts=mode==='single'?[[2000,'2 秒／根'],[1500,'1.5 秒／根'],[1000,'1 秒／根'],[500,'0.5 秒／根']]:[[1,'1 倍'],[4,'4 倍'],[8,'8 倍'],[16,'16 倍'],[24,'24 倍']];$('speed').replaceChildren(...opts.map(([v,l])=>new Option(l,v)));$('speed').value=mode==='single'?singleMs:dynamicRate}
-function clearTrades(){finishHorizontalDrag(true,false);selectedHorizontal=null;intradayViewport=null;candleViewport=null;wholeDayFit=chartType==='intraday';wholeDaySaved=wholeDayFit?{1:{count:viewCount,range:null}}:{};stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=null;position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null}
+function clearTrades(){finishHorizontalDrag(true,false);horizontalTap=null;intradayViewport=null;candleViewport=null;wholeDayFit=chartType==='intraday';wholeDaySaved=wholeDayFit?{1:{count:viewCount,range:null}}:{};stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=null;position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null}
 function setDay(d){stop();clearTrades();selectedDay=d;dayStart=rows.findIndex(r=>date(r.t)===d);dayEnd=dayStart;while(dayEnd+1<rows.length&&date(rows[dayEnd+1].t)===d)dayEnd++;idx=dayStart-1;$('datePick').value=d;update();rememberSelection()}
 function install(data,name,isDemo,options={}){stop();clearTrades();idx=-1;builtin=!!options.builtin;rows=data;series={};for(const p of [1,5,30])series[p]=buildSeries(data,p);sourceName=name;demoMode=isDemo;const dates=options.dates||[...new Set(rows.map(r=>date(r.t)))];$('datePick').replaceChildren(...dates.map(d=>new Option(d,d)));$('fileInfo').textContent=(isDemo?'合成示範 · 非真實歷史行情':name)+' · '+fmt(rows.length,0)+' 根 1 分 K';setDay(options.day||(isDemo?dates[dates.length-1]:dates[0]));}
 async function loadBuiltin(day){
@@ -183,10 +183,10 @@ function saveHorizontalLines(){
  replayStore.write({annotations:horizontalBook}).catch(()=>notify('水平線本次可用，但保存失敗，重新開啟後可能需要重畫'));
 }
 function startHorizontalDrag(e,line){
- if(!drawingMap||stopDrag||horizontalDrag||builtinLoading||importing)return;
+ if(line.locked!==false||!drawingMap||stopDrag||horizontalDrag||builtinLoading||importing)return;
  e.preventDefault();e.stopPropagation();
  const rect=canvas.getBoundingClientRect(),m=drawingMap;
- pointers.clear();gesture=null;canvas.style.cursor='default';selectedHorizontal=line.id;
+ pointers.clear();gesture=null;canvas.style.cursor='default';
  horizontalDrag={pointerId:e.pointerId,line,key:horizontalKey(),original:line.price,resume:playing,
   lo:m.lo,hi:m.hi,top:rect.top+m.top,height:m.plotH,
   offset:e.clientY-(rect.top+m.top+(m.hi-line.price)/(m.hi-m.lo)*m.plotH)};
@@ -221,31 +221,61 @@ function renderHorizontalLines(){
   if(!element){
    element=document.createElement('div');element.className='horizontal-line';element.dataset.lineId=line.id;
    const grip=document.createElement('button');grip.className='horizontal-grip';
-   const label=document.createElement('button');label.className='horizontal-label';
-   const remove=document.createElement('button');remove.className='horizontal-remove';remove.textContent='×';remove.setAttribute('aria-label','刪除這條水平線');
-   for(const button of [grip,label])bindHorizontalGrip(button,line);
-   remove.addEventListener('click',e=>{e.stopPropagation();if(horizontalDrag)return;horizontalBook[key]=horizontalLines().filter(l=>l.id!==line.id);selectedHorizontal=null;saveHorizontalLines();requestDraw();});
-   element.append(grip,label,remove);container.append(element);horizontalElements.set(line.id,element);
+   bindHorizontalGrip(grip,line);
+   element.append(grip);container.append(element);horizontalElements.set(line.id,element);
   }
   const m=drawingMap; element.hidden=!m||line.price<m.lo||line.price>m.hi;
   if(!m)continue;
   element.style.top=(m.top+(m.hi-line.price)/(m.hi-m.lo)*m.plotH)+'px';element.style.left=m.left+'px';element.style.setProperty('--line-right',m.right+'px');
   element.style.setProperty('--annotation-color',['#6fc9ff','#c4a0ff','#7ee2be','#f3a5cc'][(line.id-1)%4]);
-  element.classList.toggle('selected',line.id===selectedHorizontal);
-  const [grip,label,remove]=element.children;
-  grip.setAttribute('aria-label','水平線 '+fmt(line.price)+'，按住上下拖曳');label.textContent=fmt(line.price);label.setAttribute('aria-label','水平線價格 '+fmt(line.price)+'，按住上下拖曳');
-  remove.hidden=line.id!==selectedHorizontal;
+  element.classList.toggle('editable',line.locked===false);
+  const grip=element.firstElementChild;grip.tabIndex=line.locked===false?0:-1;
+  grip.setAttribute('aria-label',line.locked===false?'可移動水平線，按住上下拖曳，點空白處鎖定':'已鎖定水平線，雙擊線條解鎖');
+
  }
+}
+function lockHorizontalLines(except=null){
+ let changed=false;
+ for(const line of horizontalLines()){
+  const locked=line.id!==except;
+  if(line.locked!==locked){line.locked=locked;changed=true;}
+ }
+ if(changed){horizontalTap=null;saveHorizontalLines();requestDraw();}
+ return changed;
+}
+function horizontalAt(clientX,clientY){
+ if(!drawingMap)return null;
+ const rect=canvas.getBoundingClientRect(),m=drawingMap,x=clientX-rect.left,y=clientY-rect.top;
+ if(x<m.left||x>m.w-m.right||y<m.top||y>m.h-m.bottom)return null;
+ let found=null,distance=13;
+ for(const line of horizontalLines()){
+  if(line.price<m.lo||line.price>m.hi)continue;
+  const gap=Math.abs(m.top+(m.hi-line.price)/(m.hi-m.lo)*m.plotH-y);
+  if(gap<distance){distance=gap;found=line;}
+ }
+ return found;
+}
+function tapHorizontalCanvas(e,g){
+ const line=g.horizontalLine,key=horizontalKey(),now=Date.now();
+ if(line&&line.locked!==false){
+  if(horizontalTap&&horizontalTap.key===key&&horizontalTap.id===line.id&&now-horizontalTap.at<380&&Math.hypot(e.clientX-horizontalTap.x,e.clientY-horizontalTap.y)<24){
+   lockHorizontalLines(line.id);horizontalTap=null;
+  }else horizontalTap={id:line.id,key,at:now,x:e.clientX,y:e.clientY};
+  return true;
+ }
+ horizontalTap=null;
+ return lockHorizontalLines();
 }
 $('addHorizontal').onclick=()=>{
  if(builtinLoading||importing||!rememberReady||horizontalDrag||stopDrag)return;
  if(!drawingMap){notify('請先播放行情，再新增水平線');return;}
- const key=horizontalKey(),line={id:++horizontalSequence,price:Math.round((drawingMap.lo+drawingMap.hi)/2)};
- (horizontalBook[key]??=[]).push(line);selectedHorizontal=line.id;saveHorizontalLines();requestDraw();
+ lockHorizontalLines();
+ const key=horizontalKey(),line={id:++horizontalSequence,price:Math.round((drawingMap.lo+drawingMap.hi)/2),locked:false};
+ (horizontalBook[key]??=[]).push(line);saveHorizontalLines();requestDraw();
 };
 $('clearHorizontal').onclick=()=>{
  if(builtinLoading||importing||!rememberReady||horizontalDrag)return;
- horizontalBook[horizontalKey()]=[];selectedHorizontal=null;saveHorizontalLines();requestDraw();
+ horizontalBook[horizontalKey()]=[];horizontalTap=null;saveHorizontalLines();requestDraw();
 };
 // Intraday charts use only revealed one-minute closes and the current simulated quote.
 // Viewports use minute units so line and candle charts share gestures and controls.
@@ -396,7 +426,7 @@ $('randomDay').onclick=async()=>{
   }
  }
  function blockStopTouchStart(e){
-  if(stopDrag||horizontalDrag||$('stopHandle').contains(e.target)||e.target.closest?.('.horizontal-grip,.horizontal-label')){
+  if(stopDrag||horizontalDrag||$('stopHandle').contains(e.target)||e.target.closest?.('.horizontal-grip')){
    if(e.cancelable)e.preventDefault();
   }
  }
@@ -413,9 +443,36 @@ $('randomDay').onclick=async()=>{
  function makeGesture(p,kind=axisAt(p.x,p.y)){return{kind,x:p.x,y:p.y,pan,count:viewCount,dist:0,moved:false,range:priceRange?[...priceRange]:drawingMap?[drawingMap.lo,drawingMap.hi]:null,plotH:drawingMap?.plotH||1,dx:drawingMap?.dx||8}}
  function translatePrice(range,dy,height){const shift=dy*(range[1]-range[0])/Math.max(1,height);return[range[0]+shift,range[1]+shift]}
  function scalePrice(range,dy){const mid=(range[0]+range[1])/2,span=Math.max(2,Math.min(100000,(range[1]-range[0])*Math.exp(dy/180)));return[mid-span/2,mid+span/2]}
- canvas.addEventListener('pointerdown',e=>{if(stopDrag||horizontalDrag)return;if(e.button!==undefined&&e.button!==0)return;leaveWholeDay();e.preventDefault();canvas.setPointerCapture(e.pointerId);const p={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,p);if(pointers.size===1)gesture=makeGesture(p);if(pointers.size===2){const p=[...pointers.values()];gesture=makeGesture(p[0],'pinch');gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true}canvas.style.cursor=gesture.kind==='price'?'ns-resize':gesture.kind==='time'?'ew-resize':'grabbing'});
- canvas.addEventListener('pointermove',e=>{if(stopDrag||horizontalDrag){e.preventDefault();return;}if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return}e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size>=2){const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*gesture.dist/Math.max(10,dist))));if(gesture.range){const mid=(gesture.range[0]+gesture.range[1])/2,span=Math.max(2,Math.min(100000,(gesture.range[1]-gesture.range[0])*gesture.dist/Math.max(10,dist)));manualPriceRange=[mid-span/2,mid+span/2];}manualPan=false;pan=0;gesture.moved=true}else{const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(Math.hypot(dx,dy)>3)gesture.moved=true;if(gesture.moved){if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true}}}priceRange=null;selectedBar=null;requestDraw()});
- function finishPointer(e){if(gesture&&!gesture.moved&&drawingMap){if(gesture.kind==='price'||gesture.kind==='time'){const now=Date.now();if(lastAxisTap&&lastAxisTap.kind===gesture.kind&&now-lastAxisTap.at<350){if(gesture.kind==='price'){manualPan=false;manualPriceRange=null;}else{viewCount=45;pan=0}priceRange=null;lastAxisTap=null;requestDraw()}else lastAxisTap={kind:gesture.kind,at:now}}}pointers.delete(e.pointerId);if(!pointers.size){gesture=null;canvas.style.cursor='default'}else{gesture=makeGesture([...pointers.values()][0],'pan');gesture.moved=true}}
+ canvas.addEventListener('pointerdown',e=>{
+  if(stopDrag||horizontalDrag)return;if(e.button!==undefined&&e.button!==0)return;
+  const line=horizontalAt(e.clientX,e.clientY),editing=horizontalLines().some(l=>l.locked===false);
+  // A tap that locks/unlocks an annotation must not change the chart viewport.
+  if(!line&&!editing)leaveWholeDay();
+  e.preventDefault();canvas.setPointerCapture(e.pointerId);
+  const p={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,p);
+  if(pointers.size===1){gesture=makeGesture(p);gesture.horizontalLine=line;gesture.downAt=Date.now();}
+  if(pointers.size===2){
+   horizontalTap=null;leaveWholeDay();const p=[...pointers.values()];gesture=makeGesture(p[0],'pinch');
+   gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true;
+  }
+  canvas.style.cursor=gesture.kind==='price'?'ns-resize':gesture.kind==='time'?'ew-resize':'grabbing';
+ });
+ canvas.addEventListener('pointermove',e=>{if(stopDrag||horizontalDrag){e.preventDefault();return;}if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return}e.preventDefault();if(wholeDayFit&&Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>3){leaveWholeDay();gesture.count=viewCount;gesture.pan=pan;if(manualPriceRange)gesture.range=[...manualPriceRange];}pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size>=2){const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*gesture.dist/Math.max(10,dist))));if(gesture.range){const mid=(gesture.range[0]+gesture.range[1])/2,span=Math.max(2,Math.min(100000,(gesture.range[1]-gesture.range[0])*gesture.dist/Math.max(10,dist)));manualPriceRange=[mid-span/2,mid+span/2];}manualPan=false;pan=0;gesture.moved=true}else{const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(Math.hypot(dx,dy)>3)gesture.moved=true;if(gesture.moved){if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true}}}priceRange=null;selectedBar=null;requestDraw()});
+ function finishPointer(e){
+  if(gesture&&!gesture.moved&&drawingMap){
+   const handled=Date.now()-(gesture.downAt||0)<380&&tapHorizontalCanvas(e,gesture);
+   if(!handled&&(gesture.kind==='price'||gesture.kind==='time')){
+    const now=Date.now();
+    if(lastAxisTap&&lastAxisTap.kind===gesture.kind&&now-lastAxisTap.at<350){
+     if(gesture.kind==='price'){manualPan=false;manualPriceRange=null;}else{viewCount=45;pan=0;}
+     priceRange=null;lastAxisTap=null;requestDraw();
+    }else lastAxisTap={kind:gesture.kind,at:now};
+   }
+  }else horizontalTap=null;
+  pointers.delete(e.pointerId);
+  if(!pointers.size){gesture=null;canvas.style.cursor='default';}
+  else{gesture=makeGesture([...pointers.values()][0],'pan');gesture.moved=true;}
+ }
  canvas.addEventListener('pointerup',finishPointer);canvas.addEventListener('pointercancel',()=>{pointers.clear();gesture=null;canvas.style.cursor='default'});canvas.addEventListener('lostpointercapture',e=>{if(pointers.has(e.pointerId)){pointers.clear();gesture=null}});
  canvas.addEventListener('wheel',e=>{e.preventDefault();if(stopDrag||horizontalDrag)return;leaveWholeDay();if(axisAt(e.clientX,e.clientY)==='price'&&priceRange)manualPriceRange=scalePrice(priceRange,e.deltaY*.2);else viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount+(e.deltaY>0?4:-4)));priceRange=null;requestDraw()},{passive:false});
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing){stop();notify('已暫停播放')}});new ResizeObserver(()=>{priceRange=null;requestDraw()}).observe($('chartWrap'));
@@ -433,7 +490,7 @@ async function restoreReplay(){
   if(stored&&typeof stored==='object'&&!Array.isArray(stored)){
    for(const [key,lines] of Object.entries(stored)){
     if(!Array.isArray(lines))continue;
-    horizontalBook[key]=lines.filter(l=>l&&Number.isSafeInteger(l.id)&&l.id>0&&Number.isFinite(l.price)).map(l=>({id:l.id,price:l.price}));
+    horizontalBook[key]=lines.filter(l=>l&&Number.isSafeInteger(l.id)&&l.id>0&&Number.isFinite(l.price)).map(l=>({id:l.id,price:l.price,locked:l.locked!==false}));
     for(const l of horizontalBook[key])horizontalSequence=Math.max(horizontalSequence,l.id);
    }
   }
