@@ -245,12 +245,12 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
  body.chart-fullscreen .app{position:fixed;inset:0;display:block;max-width:none;width:100%;height:var(--app-height,100vh);height:100dvh;padding:0}
  body.chart-fullscreen header,body.chart-fullscreen .quote,body.chart-fullscreen .chartbar,body.chart-fullscreen .chart-actions,body.chart-fullscreen #legend,body.chart-fullscreen #stopHandle,body.chart-fullscreen .horizontal-grip{display:none}
  body.chart-fullscreen #chartWrap{position:absolute;inset:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);width:auto;height:auto;min-width:0;min-height:0}
- body.chart-fullscreen .desk{position:fixed;inset:auto calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 6px) auto;z-index:15;display:flex;flex-direction:column;gap:3px;width:clamp(210px,36vw,315px);padding:4px;border:0;border-radius:8px;background:#090d14b8}
+ body.chart-fullscreen .desk{position:fixed;inset:auto calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 6px) auto;z-index:15;display:flex;flex-direction:column;gap:3px;width:clamp(113px,calc(18vw + 8px),166px);padding:4px;border:0;border-radius:8px;background:#090d14b8}
  body.chart-fullscreen .metrics,body.chart-fullscreen .playrow,body.chart-fullscreen .footnote{display:none}
  body.chart-fullscreen .fullscreen-pnl{display:block;width:100%;text-align:center;font-size:16px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
  body.chart-fullscreen .traderow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:4px;margin:0}
  body.chart-fullscreen .traderow button{min-height:44px;padding:3px;font-size:20px;gap:5px}
- body.chart-fullscreen .traderow span{font-size:10px}
+ body.chart-fullscreen .traderow span{display:none}
  body.chart-fullscreen #fullscreenPlay{display:flex;background:#28486d;border:1px solid #385e89;color:#e7f2ff}
  body.chart-fullscreen #exitFullscreen{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:calc(env(safe-area-inset-right) + 8px);z-index:20;display:flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:5px;border:1px solid #25303e;border-radius:8px;background:#090d14b8}
 }

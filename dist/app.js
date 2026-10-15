@@ -16,8 +16,8 @@ let rememberReady=false,dayOnly=false;
 let wholeDayFit=false,wholeDaySaved={};
 let chartType='candles',candleTimeframe=5;
 let intradayViewport=null,candleViewport=null;
-let chartFullscreen=false;
-function rememberSelection(){if(rememberReady&&!importing)replayStore.write({selection:{kind:builtin?'builtin':demoMode?'demo':'csv',day:selectedDay,chartType}}).catch(()=>{});}
+let chartFullscreen=false,fullscreenPreferred=false;
+function rememberSelection(){if(rememberReady&&!importing)replayStore.write({selection:{kind:builtin?'builtin':demoMode?'demo':'csv',day:selectedDay,chartType,fullscreenPreferred}}).catch(()=>{});}
 let renderPending=false, toastTimer, drawingMap=null;
 const fmt=(n,d=1)=>Number(n).toLocaleString('zh-TW',{maximumFractionDigits:d});
 const money=n=>(n<0?'−$':n>0?'+$':'$')+fmt(Math.abs(n),0);
@@ -29,7 +29,7 @@ function currentPrice(){return live?live.bar.c:idx>=0?rows[idx].c:null}
 function currentTime(){return live?rows[live.i].t+live.progress*MIN:idx>=0?rows[idx].t+MIN:rows[dayStart]?.t}
 function floating(){const p=currentPrice();return p===null||!position?0:(p-Math.sign(position)*slippage-average)*position*multiplier-Math.abs(position)*cost*2}
 function signed(el,n,text){el.textContent=text;el.classList.toggle('positive',n>0);el.classList.toggle('negative',n<0)}
-function update(){const intraday=chartType==='intraday';$('lineChart').classList.toggle('selected',intraday);$('lineChart').setAttribute('aria-pressed',String(intraday));$('lineChart').disabled=builtinLoading||importing||!rememberReady;$('addHorizontal').disabled=builtinLoading||importing||!rememberReady;$('clearHorizontal').disabled=builtinLoading||importing||!rememberReady;document.querySelector('.periods').hidden=intraday;$('intradayLabel').hidden=!intraday;$('chart').setAttribute('aria-label',intraday?'當日分時價格線，只顯示已揭露的行情，可雙指縮放及拖曳':'已揭露的K線圖，可雙指縮放及拖曳');$('dayOnly').classList.toggle('selected',dayOnly||intraday);$('dayOnly').setAttribute('aria-pressed',String(dayOnly||intraday));$('dayOnly').disabled=intraday||builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=builtinLoading||importing||!rememberReady;$('wholeDay').classList.toggle('selected',wholeDayFit);$('wholeDay').setAttribute('aria-pressed',String(wholeDayFit));$('wholeDay').setAttribute('aria-label',wholeDayFit?'離開全日顯示，恢復手動縮放並跟隨最新價格':'自動縮放顯示當日已揭露的全部走勢');const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
+function update(){const intraday=chartType==='intraday';$('lineChart').classList.toggle('selected',intraday);$('lineChart').setAttribute('aria-pressed',String(intraday));$('lineChart').disabled=builtinLoading||importing||!rememberReady;$('enterFullscreen').disabled=builtinLoading||importing||!rememberReady;$('addHorizontal').disabled=builtinLoading||importing||!rememberReady;$('clearHorizontal').disabled=builtinLoading||importing||!rememberReady;document.querySelector('.periods').hidden=intraday;$('intradayLabel').hidden=!intraday;$('chart').setAttribute('aria-label',intraday?'當日分時價格線，只顯示已揭露的行情，可雙指縮放及拖曳':'已揭露的K線圖，可雙指縮放及拖曳');$('dayOnly').classList.toggle('selected',dayOnly||intraday);$('dayOnly').setAttribute('aria-pressed',String(dayOnly||intraday));$('dayOnly').disabled=intraday||builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=builtinLoading||importing||!rememberReady;$('wholeDay').classList.toggle('selected',wholeDayFit);$('wholeDay').setAttribute('aria-pressed',String(wholeDayFit));$('wholeDay').setAttribute('aria-label',wholeDayFit?'離開全日顯示，恢復手動縮放並跟隨最新價格':'自動縮放顯示當日已揭露的全部走勢');const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
  signed($('position'),position,position?(position>0?'多 ':'空 ')+Math.abs(position)+' 口':'0 口');$('average').textContent='均價 '+(position?fmt(average,2):'—');signed($('floating'),floating(),fmt(Math.abs(floating()),0));$('points').textContent=position?fmt((p-Math.sign(position)*slippage-average)*Math.sign(position),1)+' 點／口':'0 點';signed($('realized'),realized,fmt(Math.abs(realized),0));$('total').textContent='合計 '+money(realized+floating());signed($('fullscreenPnl'),realized+floating(),money(realized+floating()));$('fullscreenPnl').setAttribute('aria-label','本次合計損益 '+money(realized+floating()));
  $('play').textContent=playing?'Ⅱ 暫停':'▶ 播放';$('play').setAttribute('aria-pressed',String(playing));$('fullscreenPlay').textContent=playing?'Ⅱ':'▶';$('fullscreenPlay').setAttribute('aria-label',playing?'暫停':'播放');$('fullscreenPlay').setAttribute('aria-pressed',String(playing));const ended=idx>=dayEnd&&!live;$('closeDay').disabled=builtinLoading||importing||!rememberReady||ended;$('randomDay').disabled=builtinLoading||importing||!rememberReady;$('stopLoss').disabled=!position||ended||builtinLoading||importing;$('stopLoss').classList.toggle('selected',stopPrice!==null);$('stopLoss').setAttribute('aria-pressed',String(stopPrice!==null));$('play').disabled=builtinLoading||importing||!rememberReady;$('fullscreenPlay').disabled=$('play').disabled;$('buy').disabled=$('sell').disabled=builtinLoading||p===null||ended||idx<dayStart&&!live;$('barStatus').textContent=ended?'當日資料結束':live?'形成中':idx<dayStart?'等待第一根':intraday?'分時 · 1 分鐘':(rows[idx]&&rows[idx+1]&&bucket(rows[idx].t)===bucket(rows[idx+1].t)?'形成中':'已收 K');
  $('modeHint').textContent=ended?'本日結束 · 已自動平倉':mode==='dynamic'?'OHLC 模擬路徑 · 非真實逐筆':'反向按鈕減倉，歸零後再按才反手';$('multiplier').disabled=$('cost').disabled=$('slippage').disabled=!!fills.length;
@@ -271,13 +271,14 @@ function tapHorizontalCanvas(e,g){
  horizontalTap=null;
  return lockHorizontalLines();
 }
-$('addHorizontal').onclick=()=>{
+function addHorizontalLine(){
  if(builtinLoading||importing||!rememberReady||horizontalDrag||stopDrag)return;
  if(!drawingMap){notify('請先播放行情，再新增水平線');return;}
  lockHorizontalLines();
  const key=horizontalKey(),line={id:++horizontalSequence,price:Math.round((drawingMap.lo+drawingMap.hi)/2),locked:false};
  (horizontalBook[key]??=[]).push(line);saveHorizontalLines();requestDraw();
-};
+}
+$('addHorizontal').onclick=addHorizontalLine;
 $('clearHorizontal').onclick=()=>{
  if(builtinLoading||importing||!rememberReady||horizontalDrag)return;
  horizontalBook[horizontalKey()]=[];horizontalTap=null;saveHorizontalLines();requestDraw();
@@ -408,7 +409,7 @@ $('randomDay').onclick=async()=>{
  if(builtin){if(!await loadBuiltin(chosen))return;}else setDay(chosen);
  notify('隨機 '+chosen+' · 按播放從開盤開始');
 };
- let importing=false;$('file').onchange=async e=>{const f=e.target.files[0];if(!f||importing||builtinLoading)return;if(!confirmReset()){e.target.value='';return}if(f.size>30*1024*1024){$('importError').textContent='手機版請匯入 30 MB 以下的 CSV，可先分段匯出。';e.target.value='';return}importing=true;$('importError').textContent='讀取中…';$('startDay').disabled=$('demo').disabled=$('builtin').disabled=true;try{const buf=await f.arrayBuffer(),decoded=decodeCSV(buf),parsed=parseCSV(decoded.text,$('stamp').value,$('session').value);install(parsed.rows,f.name,false);$('importError').textContent='正在保存到本機…';try{await replayStore.write({csv:{text:decoded.text,name:f.name,stamp:$('stamp').value,session:$('session').value},selection:{kind:'csv',day:selectedDay,chartType}});$('fileInfo').textContent+=' · 已保存到本機';$('importError').textContent='';$('dataDialog').close();notify('CSV 已保存，下次開啟自動載入')}catch(storageError){$('importError').textContent='本次已載入，但本機保存失敗；下次需要重新匯入。請確認未使用私密瀏覽並有足夠空間。';notify('已載入，但無法保存 CSV')}}catch(err){$('importError').textContent=err.message}finally{importing=false;$('startDay').disabled=$('demo').disabled=$('builtin').disabled=false;e.target.value='';update()}};
+ let importing=false;$('file').onchange=async e=>{const f=e.target.files[0];if(!f||importing||builtinLoading)return;if(!confirmReset()){e.target.value='';return}if(f.size>30*1024*1024){$('importError').textContent='手機版請匯入 30 MB 以下的 CSV，可先分段匯出。';e.target.value='';return}importing=true;$('importError').textContent='讀取中…';$('startDay').disabled=$('demo').disabled=$('builtin').disabled=true;try{const buf=await f.arrayBuffer(),decoded=decodeCSV(buf),parsed=parseCSV(decoded.text,$('stamp').value,$('session').value);install(parsed.rows,f.name,false);$('importError').textContent='正在保存到本機…';try{await replayStore.write({csv:{text:decoded.text,name:f.name,stamp:$('stamp').value,session:$('session').value},selection:{kind:'csv',day:selectedDay,chartType,fullscreenPreferred}});$('fileInfo').textContent+=' · 已保存到本機';$('importError').textContent='';$('dataDialog').close();notify('CSV 已保存，下次開啟自動載入')}catch(storageError){$('importError').textContent='本次已載入，但本機保存失敗；下次需要重新匯入。請確認未使用私密瀏覽並有足夠空間。';notify('已載入，但無法保存 CSV')}}catch(err){$('importError').textContent=err.message}finally{importing=false;$('startDay').disabled=$('demo').disabled=$('builtin').disabled=false;e.target.value='';update()}};
  ma.forEach((m,i)=>{const row=document.createElement('div');row.className='ma-row';row.style.setProperty('--ma',m.color);row.innerHTML='<label><input type="checkbox" aria-label="顯示第 '+(i+1)+' 條均線"><span class="swatch"></span>均線 '+(i+1)+'</label><input type="number" min="1" max="200" value="'+m.p+'" inputmode="numeric" aria-label="第 '+(i+1)+' 條均線週期">';const [check,period]=row.querySelectorAll('input');check.onchange=()=>{m.on=check.checked;priceRange=null;requestDraw()};period.onchange=()=>{m.p=Math.max(1,Math.min(200,Math.round(+period.value||5)));period.value=m.p;priceRange=null;requestDraw()};$('maSettings').append(row)});
  $('multiplier').onchange=()=>{multiplier=Math.max(1,Math.min(10000,+$('multiplier').value||10));$('multiplier').value=multiplier;update()};$('cost').onchange=()=>{cost=Math.max(0,Math.min(10000,+$('cost').value||0));$('cost').value=cost;update()};
  $('slippage').onchange=()=>{slippage=Math.max(0,Math.min(100,Math.round(+$('slippage').value||0)));$('slippage').value=slippage;update()};
@@ -485,21 +486,25 @@ $('randomDay').onclick=async()=>{
  document.addEventListener('keydown',e=>{if(e.repeat||document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();togglePlay()}if(e.code==='ArrowRight'){e.preventDefault();stop();nextBar()}if(e.code==='KeyA')trade(1);if(e.code==='KeyD')trade(-1)});
  if(document.modelContext?.registerTool){const tool={name:'read_replay_state',description:'Read only the currently revealed replay price, time, position and profit. Does not disclose future candles.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute(input){if(input&&Object.keys(input).length)throw Error('No input fields accepted');return{time:time(currentTime()),price:currentPrice(),position,average,realized,floating:floating(),playing,mode,timeframe:tf,demo:demoMode}}};try{Promise.resolve(document.modelContext.registerTool(tool)).catch(()=>{})}catch{}}
  const landscapeViewport=matchMedia('(orientation: landscape)');
+ function syncChartFullscreen(){
+  const enabled=fullscreenPreferred&&landscapeViewport.matches;
+  $('enterFullscreen').setAttribute('aria-pressed',String(fullscreenPreferred));
+  if(enabled===chartFullscreen)return;
+  finishHorizontalDrag(true);finishStopDrag(true);pointers.clear();gesture=null;horizontalTap=null;
+  if(enabled)lockHorizontalLines();
+  chartFullscreen=enabled;document.body.classList.toggle('chart-fullscreen',enabled);
+  priceRange=null;update();
+ }
  function setChartFullscreen(enabled){
-  if(enabled&&(!landscapeViewport.matches||horizontalDrag||stopDrag))return;
-  chartFullscreen=!!enabled;
-  if(chartFullscreen)lockHorizontalLines();
-  document.body.classList.toggle('chart-fullscreen',chartFullscreen);
-  $('enterFullscreen').setAttribute('aria-pressed',String(chartFullscreen));
-  priceRange=null;requestDraw();
+  if(enabled&&(!landscapeViewport.matches||horizontalDrag||stopDrag||!rememberReady))return;
+  fullscreenPreferred=!!enabled;syncChartFullscreen();rememberSelection();
   if(chartFullscreen)$('exitFullscreen').focus({preventScroll:true});
   else if(landscapeViewport.matches)$('enterFullscreen').focus({preventScroll:true});
  }
  $('enterFullscreen').onclick=()=>setChartFullscreen(true);
  $('exitFullscreen').onclick=()=>setChartFullscreen(false);
- const exitOnPortrait=()=>{if(!landscapeViewport.matches&&chartFullscreen)setChartFullscreen(false);};
- if(landscapeViewport.addEventListener)landscapeViewport.addEventListener('change',exitOnPortrait);
- else landscapeViewport.addListener(exitOnPortrait);
+ if(landscapeViewport.addEventListener)landscapeViewport.addEventListener('change',syncChartFullscreen);
+ else landscapeViewport.addListener(syncChartFullscreen);
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartFullscreen){e.preventDefault();setChartFullscreen(false);}});
  // Reconcile iOS viewport geometry after rotation settles, without changing page zoom.
  let viewportFrame=0,viewportFollowup=0;
@@ -550,8 +555,8 @@ async function restoreReplay(){
  }catch(err){failed=true;}
  finally{builtinLoading=false;for(const id of ['file','startDay','demo','builtin'])$(id).disabled=false;update();}
  if(!restored)await loadBuiltin(saved?.selection?.kind==='builtin'?saved.selection.day:undefined);
- rememberReady=true;
+ rememberReady=true;fullscreenPreferred=saved?.selection?.fullscreenPreferred===true;
  if(saved?.selection?.chartType==='intraday')toggleChartType();
- update();
+ syncChartFullscreen();update();
  if(failed)$('importError').textContent='無法恢復本機 CSV，請重新匯入。';
 }
