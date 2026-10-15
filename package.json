@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "description": "手機版 K 棒複盤系統",
-  "scripts": { "start": "node server.cjs", "dev": "node server.cjs", "check": "node --check server.cjs && node --check dist/app.js && node --check dist/csv.js && node --check dist/storage.js" },
-  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.cjs",
+    "dev": "node server.cjs",
+    "check": "node --check server.cjs && node --check dist/app.js && node --check dist/csv.js && node --check dist/storage.js && node --check dist/pwa.js && node --check dist/sw.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {},
   "devDependencies": {}
 }

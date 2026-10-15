@@ -1,1 +1,24 @@
-{"id":"/","name":"掌上 K 棒複盤室","short_name":"掌上複盤","lang":"zh-Hant","start_url":"/","scope":"/","display":"standalone","background_color":"#090d14","theme_color":"#090d14","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "id": "./",
+  "name": "掌上 K 棒複盤室",
+  "short_name": "掌上複盤",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090d14",
+  "theme_color": "#090d14",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -163,3 +163,12 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
 
 #chartWrap,#chart,#stopHandle{overscroll-behavior:none;touch-action:none;-webkit-touch-callout:none;overflow-anchor:none}
 #stopHandle{ -webkit-user-select:none;user-select:none}
+
+/* Home screen app help stays within the iPhone safe area. */
+.install-icon{display:block;border-radius:16px;margin:0 auto 18px}
+.install-steps{padding-left:24px}.install-steps li{margin:14px 0;line-height:1.7}
+#offlineStatus{border:1px solid var(--line);padding:12px;border-radius:10px;color:var(--blue)}
+#installDialog{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)}
+@media(display-mode:standalone){body{-webkit-tap-highlight-color:transparent}}
+
+#wholeDay.selected{color:var(--blue);background:#17283f;border-color:var(--blue)}

@@ -11,6 +11,7 @@ let builtin=false,builtinIndex=null,builtinLoading=false,builtinMonthCache=new M
 let manualPriceRange=null,manualPan=false;
 let timeframeViews={},timeframeFitKeys={};
 let rememberReady=false,dayOnly=false;
+let wholeDayFit=false,wholeDaySaved={};
 function rememberSelection(){if(rememberReady&&!importing)replayStore.write({selection:{kind:builtin?'builtin':demoMode?'demo':'csv',day:selectedDay}}).catch(()=>{});}
 let renderPending=false, toastTimer, drawingMap=null;
 const fmt=(n,d=1)=>Number(n).toLocaleString('zh-TW',{maximumFractionDigits:d});
@@ -23,7 +24,7 @@ function currentPrice(){return live?live.bar.c:idx>=0?rows[idx].c:null}
 function currentTime(){return live?rows[live.i].t+live.progress*MIN:idx>=0?rows[idx].t+MIN:rows[dayStart]?.t}
 function floating(){const p=currentPrice();return p===null||!position?0:(p-Math.sign(position)*slippage-average)*position*multiplier-Math.abs(position)*cost*2}
 function signed(el,n,text){el.textContent=text;el.classList.toggle('positive',n>0);el.classList.toggle('negative',n<0)}
-function update(){$('dayOnly').classList.toggle('selected',dayOnly);$('dayOnly').setAttribute('aria-pressed',String(dayOnly));$('dayOnly').disabled=builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=dayOnly;const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
+function update(){$('dayOnly').classList.toggle('selected',dayOnly);$('dayOnly').setAttribute('aria-pressed',String(dayOnly));$('dayOnly').disabled=builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=builtinLoading||importing||!rememberReady;$('wholeDay').classList.toggle('selected',wholeDayFit);$('wholeDay').setAttribute('aria-pressed',String(wholeDayFit));$('wholeDay').setAttribute('aria-label',wholeDayFit?'離開全日顯示，恢復手動縮放並跟隨最新K棒':'自動縮放顯示當日已揭露的全部K棒');const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
  signed($('position'),position,position?(position>0?'多 ':'空 ')+Math.abs(position)+' 口':'0 口');$('average').textContent='均價 '+(position?fmt(average,2):'—');signed($('floating'),floating(),fmt(Math.abs(floating()),0));$('points').textContent=position?fmt((p-Math.sign(position)*slippage-average)*Math.sign(position),1)+' 點／口':'0 點';signed($('realized'),realized,fmt(Math.abs(realized),0));$('total').textContent='合計 '+money(realized+floating());
  $('play').textContent=playing?'Ⅱ 暫停':'▶ 播放';$('play').setAttribute('aria-pressed',String(playing));const ended=idx>=dayEnd&&!live;$('closeDay').disabled=builtinLoading||importing||!rememberReady||ended;$('randomDay').disabled=builtinLoading||importing||!rememberReady;$('stopLoss').disabled=!position||ended||builtinLoading||importing;$('stopLoss').classList.toggle('selected',stopPrice!==null);$('stopLoss').setAttribute('aria-pressed',String(stopPrice!==null));$('play').disabled=builtinLoading||importing||!rememberReady;$('buy').disabled=$('sell').disabled=builtinLoading||p===null||ended||idx<dayStart&&!live;$('barStatus').textContent=ended?'當日資料結束':live?'形成中':idx<dayStart?'等待第一根':(rows[idx]&&rows[idx+1]&&bucket(rows[idx].t)===bucket(rows[idx+1].t)?'形成中':'已收 K');
  $('modeHint').textContent=ended?'本日結束 · 已自動平倉':mode==='dynamic'?'OHLC 模擬路徑 · 非真實逐筆':'反向按鈕減倉，歸零後再按才反手';$('multiplier').disabled=$('cost').disabled=$('slippage').disabled=!!fills.length;
@@ -91,7 +92,7 @@ async function togglePlay(){
 }
 function changeMode(next){if(mode===next)return;if(next==='single'&&live){checkStopPath(rows[live.i],live.progress,1);idx=live.i;live=null;endCheck()}mode=next;elapsed=0;prevWall=0;priceRange=null;speedOptions();update()}
 function speedOptions(){const opts=mode==='single'?[[2000,'2 秒／根'],[1500,'1.5 秒／根'],[1000,'1 秒／根'],[500,'0.5 秒／根']]:[[1,'1 倍'],[4,'4 倍'],[8,'8 倍'],[16,'16 倍'],[24,'24 倍']];$('speed').replaceChildren(...opts.map(([v,l])=>new Option(l,v)));$('speed').value=mode==='single'?singleMs:dynamicRate}
-function clearTrades(){stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=null;position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null}
+function clearTrades(){wholeDayFit=false;wholeDaySaved={};stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=null;position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null}
 function setDay(d){stop();clearTrades();selectedDay=d;dayStart=rows.findIndex(r=>date(r.t)===d);dayEnd=dayStart;while(dayEnd+1<rows.length&&date(rows[dayEnd+1].t)===d)dayEnd++;idx=dayStart-1;$('datePick').value=d;update();rememberSelection()}
 function install(data,name,isDemo,options={}){stop();clearTrades();idx=-1;builtin=!!options.builtin;rows=data;series={};for(const p of [1,5,30])series[p]=buildSeries(data,p);sourceName=name;demoMode=isDemo;const dates=options.dates||[...new Set(rows.map(r=>date(r.t)))];$('datePick').replaceChildren(...dates.map(d=>new Option(d,d)));$('fileInfo').textContent=(isDemo?'合成示範 · 非真實歷史行情':name)+' · '+fmt(rows.length,0)+' 根 1 分 K';setDay(options.day||(isDemo?dates[dates.length-1]:dates[0]));}
 async function loadBuiltin(day){
@@ -111,43 +112,52 @@ async function loadBuiltin(day){
  finally{builtinLoading=false;$('builtin').disabled=$('startDay').disabled=$('demo').disabled=$('file').disabled=false;update()}
 }
 function demoData(){let seed=314159,price=18000;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296},a=[];for(let d=1;d<=2;d++){for(let i=0;i<300;i++){let o=price,drift=i<70?1.9:i<125?-.5:i<195?-2.1:1.25,c=Math.round(o+drift+(rnd()-.5)*19),h=Math.max(o,c)+Math.ceil(rnd()*12),l=Math.min(o,c)-Math.ceil(rnd()*12);a.push({t:Date.UTC(2024,1,d,8,45)+i*MIN,o,h,l,c,v:Math.round(100+rnd()*1900)});price=c}}return a}
-function getVisibleSeries(){const s=series[tf],i=live?live.i:idx;if(!s||i<0||dayOnly&&i<dayStart)return{bars:[],partialIndex:-1};const g=s.map[i],complete=idx>=0?s.map[idx]:-1;let partial=null;if(live||s.ends[g]>idx){const from=s.starts[g];for(let n=from;n<=idx;n++){const r=rows[n];if(!partial)partial={...r,t:s.bars[g].t};else{partial.h=Math.max(partial.h,r.h);partial.l=Math.min(partial.l,r.l);partial.c=r.c;partial.v+=r.v}}if(live){const r=live.bar;if(!partial)partial={...r,t:s.bars[g].t};else{partial.h=Math.max(partial.h,r.h);partial.l=Math.min(partial.l,r.l);partial.c=r.c;partial.v+=r.v}}}
+function getVisibleSeries(){const s=series[tf],i=live?live.i:idx;if(!s||i<0||(dayOnly||wholeDayFit)&&i<dayStart)return{bars:[],partialIndex:-1};const g=s.map[i],complete=idx>=0?s.map[idx]:-1;let partial=null;if(live||s.ends[g]>idx){const from=s.starts[g];for(let n=from;n<=idx;n++){const r=rows[n];if(!partial)partial={...r,t:s.bars[g].t};else{partial.h=Math.max(partial.h,r.h);partial.l=Math.min(partial.l,r.l);partial.c=r.c;partial.v+=r.v}}if(live){const r=live.bar;if(!partial)partial={...r,t:s.bars[g].t};else{partial.h=Math.max(partial.h,r.h);partial.l=Math.min(partial.l,r.l);partial.c=r.c;partial.v+=r.v}}}
  // Only completed bars are borrowed from the precomputed series; rebuild the current incomplete bar from revealed minutes.
  const end=g+1;return{bars:s.bars,partial,partialIndex:partial?g:-1,length:end,get:n=>partial&&n===g?partial:s.bars[n],sumBefore:n=>s.sums[n]};}
-function revealedDayRange(){
- let low=Infinity,high=-Infinity;
- for(let n=dayStart;n<=Math.min(idx,dayEnd);n++){low=Math.min(low,rows[n].l);high=Math.max(high,rows[n].h)}
- if(live){low=Math.min(low,live.bar.l);high=Math.max(high,live.bar.h)}
- return Number.isFinite(low)?[low,high]:null;
-}
 function expandRange(range,required){
  if(!required||required[0]>=range[0]&&required[1]<=range[1])return range;
  const pad=Math.max(4,(required[1]-required[0])*.06);
  return[Math.min(range[0],required[0]-pad),Math.max(range[1],required[1]+pad)];
 }
+// Full-day fit never reveals future bars and keeps the manual scale separately.
+function leaveWholeDay(){
+ if(!wholeDayFit)return;
+ const saved=wholeDaySaved[tf];
+ if(saved){viewCount=saved.count;manualPriceRange=saved.range?[...saved.range]:null;}
+ wholeDayFit=false;manualPan=false;pan=0;priceRange=null;selectedBar=null;
+ delete timeframeFitKeys[tf];update();
+}
 function showWholeDay(){
- const vis=getVisibleSeries(),s=series[tf];if(!vis.length)return;
- const start=s.map[dayStart];viewCount=Math.min(MAX_VISIBLE_BARS,Math.max(12,vis.length-start+3));
- pan=0;manualPan=false;manualPriceRange=null;priceRange=null;selectedBar=null;
- delete timeframeFitKeys[tf];requestDraw();
+ if(wholeDayFit){leaveWholeDay();return;}
+ wholeDaySaved[tf]={count:viewCount,range:manualPriceRange?[...manualPriceRange]:priceRange?[...priceRange]:null};
+ wholeDayFit=true;pan=0;manualPan=false;priceRange=null;selectedBar=null;
+ delete timeframeFitKeys[tf];update();
 }
 function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bounds.height;if(!w||!h)return;const dpr=Math.min(window.devicePixelRatio||1,3);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);const vis=getVisibleSeries();if(!vis.length){$('stopHandle').hidden=true;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('按「播放」開始複盤',w/2,h/2);$('legend').replaceChildren();drawingMap=null;return}
  const right=30,left=8,top=(w>500&&h<400?60:(ma.some(m=>m.on)?30:14)),bottom=21,plotW=w-right-left,plotH=Math.max(40,h-top-bottom);
- const todayStart=series[tf].map[dayStart],count=dayOnly?Math.max(12,vis.length-todayStart+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
- if(!dayOnly)pan=Math.max(-(count-5),Math.min(pan,Math.max(0,vis.length-5)));
- const virtualEnd=dayOnly?vis.length:Math.max(1,vis.length-Math.round(pan)),end=Math.min(vis.length,virtualEnd),start=dayOnly?todayStart:Math.max(0,virtualEnd-count),dx=plotW/count,x=n=>left+(n-start+.5)*dx;const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));const currentMA=[];
+ const todayStart=series[tf].map[dayStart],count=wholeDayFit?Math.max(12,vis.length-todayStart+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
+ const lower=dayOnly||wholeDayFit?todayStart:0;
+ pan=Math.max(-(count-5),Math.min(pan,Math.max(0,vis.length-lower-1)));
+ const virtualEnd=wholeDayFit?vis.length:Math.max(lower+1,vis.length-Math.round(pan)),end=Math.min(vis.length,virtualEnd);
+ const plotStart=wholeDayFit?todayStart:virtualEnd-count,start=Math.max(lower,plotStart),dx=plotW/count,x=n=>left+(n-plotStart+.5)*dx;
+ const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average)}if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice)}let pad=Math.max(12,(hi-lo)*.16);lo-=pad;hi+=pad;
- // Preserve the saved viewport until new revealed prices leave it. Never read future highs/lows.
- const required= revealedDayRange();
- if(required){required[0]=Math.min(required[0],lo+pad);required[1]=Math.max(required[1],hi-pad)}
+ // Manual zoom keeps its span; following shifts the center instead of shrinking candles.
+ const required=[lo+pad,hi-pad];
  const key=selectedDay+':'+idx+':'+position+':'+average+':'+stopPrice+':'+(live?live.i+','+live.bar.h+','+live.bar.l:'');
  const changed=timeframeFitKeys[tf]!==key;
- if(!dayOnly&&manualPriceRange)[lo,hi]=manualPriceRange;
- else if(!dayOnly&&priceRange)[lo,hi]=priceRange;
- if(dayOnly&&stopPrice!==null&&priceRange){[lo,hi]=expandRange(priceRange,required);}
- if(!dayOnly&&changed&&!gesture&&!stopDrag){[lo,hi]=expandRange([lo,hi],required);if(manualPriceRange)manualPriceRange=[lo,hi]}
+ if(!wholeDayFit&&manualPriceRange){
+  const span=manualPriceRange[1]-manualPriceRange[0];
+  const center=currentPrice()??((manualPriceRange[0]+manualPriceRange[1])/2);
+  if(!manualPan&&!gesture&&!stopDrag)manualPriceRange=[center-span/2,center+span/2];
+  [lo,hi]=manualPriceRange;
+ }else if(!wholeDayFit&&priceRange){
+  [lo,hi]=priceRange;
+  if(changed&&!gesture&&!stopDrag)[lo,hi]=expandRange([lo,hi],required);
+ }
  timeframeFitKeys[tf]=key;
  if(stopDrag){lo=stopDrag.lo;hi=stopDrag.hi;}priceRange=[lo,hi];const y=v=>top+(hi-v)/(hi-lo)*plotH;
 
@@ -161,17 +171,17 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
 
  const p=currentPrice();if(p!==null&&p>=lo&&p<=hi){ctx.strokeStyle='#7894b877';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(left,y(p));ctx.lineTo(w-right,y(p));ctx.stroke();ctx.setLineDash([]);}
  ctx.fillStyle='#8492a6';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='center';for(let n=start;n<end;n+=Math.max(1,Math.floor(count/4))){let b=vis.get(n);ctx.fillText(clock(b.t).slice(0,5),x(n),h-8)}let selected=selectedBar!==null?Math.max(start,Math.min(end-1,selectedBar)):end-1;const b=vis.get(selected);
- $('legend').replaceChildren(...ma.filter(m=>m.on).map(m=>{let e=document.createElement('span');e.style.color=m.color;const v=maValue(selected,m.p);e.textContent='MA'+m.p+' '+(v===null?'—':fmt(v));return e}));drawingMap={start,end,dx,left,w,h,right,bottom,top,plotH,lo,hi};}
+ $('legend').replaceChildren(...ma.filter(m=>m.on).map(m=>{let e=document.createElement('span');e.style.color=m.color;const v=maValue(selected,m.p);e.textContent='MA'+m.p+' '+(v===null?'—':fmt(v));return e}));drawingMap={start,end,plotStart,dx,left,w,h,right,bottom,top,plotH,lo,hi};}
 // Each timeframe owns its viewport; manual pans are anchored to revealed bars.
 function switchTimeframe(next){
  if(![1,5,30].includes(next)||next===tf||builtinLoading||importing)return;
- if(dayOnly){tf=next;selectedBar=null;drawingMap=null;update();return;}
- timeframeViews[tf]={count:viewCount,pan,manualPan,
+ timeframeViews[tf]={count:viewCount,pan,manualPan,fit:wholeDayFit,
   range:manualPriceRange?[...manualPriceRange]:null,
   autoRange:priceRange?[...priceRange]:null,
   revealed:getVisibleSeries().length||0};
  tf=next;
  const saved=timeframeViews[tf];
+ wholeDayFit=saved?.fit||false;
  viewCount=saved?saved.count:45;
  manualPan=saved?saved.manualPan:false;
  pan=saved?saved.pan+(manualPan?(getVisibleSeries().length||0)-saved.revealed:0):0;
@@ -182,17 +192,17 @@ function switchTimeframe(next){
 function toggleDayOnly(){
  if(builtinLoading||importing||!rememberReady)return;
  if(!dayOnly){if(!confirmReset())return;dayOnly=true;setDay(selectedDay);notify('當日模式：按播放從第一根開始');}
- else{dayOnly=false;manualPan=false;pan=0;manualPriceRange=null;priceRange=null;timeframeFitKeys={};update();}
+ else{dayOnly=false;leaveWholeDay();manualPan=false;pan=0;manualPriceRange=null;priceRange=null;timeframeFitKeys={};update();}
 }
 function confirmReset(){return !fills.length||confirm('重新開始會清除本次交易與損益，確定重播？')}
 $('dayOnly').onclick=toggleDayOnly;$('wholeDay').onclick=showWholeDay;$('play').onclick=togglePlay;$('stopLoss').onclick=toggleStopLoss;$('buy').onclick=()=>trade(1);$('sell').onclick=()=>trade(-1);$('singleMode').onclick=()=>changeMode('single');$('dynamicMode').onclick=()=>changeMode('dynamic');$('speed').onchange=()=>{if(mode==='single')singleMs=+$('speed').value;else dynamicRate=+$('speed').value;elapsed=0};
- document.querySelectorAll('[data-tf]').forEach(b=>b.onclick=()=>switchTimeframe(+b.dataset.tf));$('latest').onclick=()=>{manualPan=false;manualPriceRange=null;pan=0;selectedBar=null;priceRange=null;requestDraw()};$('zoomIn').onclick=()=>{viewCount=Math.max(12,viewCount-8);priceRange=null;requestDraw()};$('zoomOut').onclick=()=>{viewCount=Math.min(MAX_VISIBLE_BARS,viewCount+8);priceRange=null;requestDraw()};$('reset').onclick=()=>{if(builtinLoading)return;stop();if(confirmReset())setDay(selectedDay)};
+ document.querySelectorAll('[data-tf]').forEach(b=>b.onclick=()=>switchTimeframe(+b.dataset.tf));$('latest').onclick=()=>{leaveWholeDay();manualPan=false;pan=0;selectedBar=null;priceRange=null;requestDraw()};$('zoomIn').onclick=()=>{leaveWholeDay();viewCount=Math.max(12,viewCount-8);priceRange=null;requestDraw()};$('zoomOut').onclick=()=>{leaveWholeDay();viewCount=Math.min(MAX_VISIBLE_BARS,viewCount+8);priceRange=null;requestDraw()};$('reset').onclick=()=>{if(builtinLoading)return;stop();if(confirmReset())setDay(selectedDay)};
  ['data','settings'].forEach(key=>$(key+'Open').onclick=()=>{stop();$(key+'Dialog').showModal()});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).close());
  $('startDay').onclick=async()=>{if(builtinLoading||!confirmReset())return;const chosen=$('datePick').value;if(builtin){if(await loadBuiltin(chosen))$('dataDialog').close()}else{setDay(chosen);$('dataDialog').close()}};$('builtin').onclick=async()=>{if(builtinLoading||!confirmReset())return;if(await loadBuiltin())$('dataDialog').close()};$('demo').onclick=()=>{if(confirmReset()){install(demoData(),'示範行情',true);$('dataDialog').close()}};
  function jumpToClose(){
  if(builtinLoading||importing||!rememberReady||dayEnd<0)return;
  playing=false;prevWall=0;for(let n=live?live.i:idx+1;n<=dayEnd;n++)checkStopPath(rows[n],live&&n===live.i?live.progress:0,1);live=null;elapsed=0;idx=dayEnd;
- manualPan=false;pan=0;selectedBar=null;manualPriceRange=null;priceRange=null;
+ manualPan=false;pan=0;selectedBar=null;priceRange=null;
  endCheck();update();notify('已跳至本日資料收盤');
 }
 $('closeDay').onclick=jumpToClose;
@@ -251,11 +261,11 @@ $('randomDay').onclick=async()=>{
  function makeGesture(p,kind=axisAt(p.x,p.y)){return{kind,x:p.x,y:p.y,pan,count:viewCount,dist:0,moved:false,range:priceRange?[...priceRange]:drawingMap?[drawingMap.lo,drawingMap.hi]:null,plotH:drawingMap?.plotH||1,dx:drawingMap?.dx||8}}
  function translatePrice(range,dy,height){const shift=dy*(range[1]-range[0])/Math.max(1,height);return[range[0]+shift,range[1]+shift]}
  function scalePrice(range,dy){const mid=(range[0]+range[1])/2,span=Math.max(2,Math.min(100000,(range[1]-range[0])*Math.exp(dy/180)));return[mid-span/2,mid+span/2]}
- canvas.addEventListener('pointerdown',e=>{if(stopDrag||dayOnly)return;if(e.button!==undefined&&e.button!==0)return;e.preventDefault();canvas.setPointerCapture(e.pointerId);const p={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,p);if(pointers.size===1)gesture=makeGesture(p);if(pointers.size===2){const p=[...pointers.values()];gesture=makeGesture(p[0],'pinch');gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true}canvas.style.cursor=gesture.kind==='price'?'ns-resize':gesture.kind==='time'?'ew-resize':'grabbing'});
- canvas.addEventListener('pointermove',e=>{if(stopDrag){e.preventDefault();return;}if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return}e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size>=2){const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*gesture.dist/Math.max(10,dist))));gesture.moved=true}else{const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(Math.hypot(dx,dy)>3)gesture.moved=true;if(gesture.moved){if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true}}}priceRange=null;selectedBar=null;requestDraw()});
+ canvas.addEventListener('pointerdown',e=>{if(stopDrag)return;if(e.button!==undefined&&e.button!==0)return;leaveWholeDay();e.preventDefault();canvas.setPointerCapture(e.pointerId);const p={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,p);if(pointers.size===1)gesture=makeGesture(p);if(pointers.size===2){const p=[...pointers.values()];gesture=makeGesture(p[0],'pinch');gesture.dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y));gesture.moved=true}canvas.style.cursor=gesture.kind==='price'?'ns-resize':gesture.kind==='time'?'ew-resize':'grabbing'});
+ canvas.addEventListener('pointermove',e=>{if(stopDrag){e.preventDefault();return;}if(!pointers.has(e.pointerId)||!gesture){const kind=axisAt(e.clientX,e.clientY);canvas.style.cursor=kind==='price'?'ns-resize':kind==='time'?'ew-resize':'default';return}e.preventDefault();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size>=2){const p=[...pointers.values()],dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*gesture.dist/Math.max(10,dist))));if(gesture.range){const mid=(gesture.range[0]+gesture.range[1])/2,span=Math.max(2,Math.min(100000,(gesture.range[1]-gesture.range[0])*gesture.dist/Math.max(10,dist)));manualPriceRange=[mid-span/2,mid+span/2];}manualPan=false;pan=0;gesture.moved=true}else{const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;if(Math.hypot(dx,dy)>3)gesture.moved=true;if(gesture.moved){if(gesture.kind==='price'&&gesture.range)manualPriceRange=scalePrice(gesture.range,dy);else if(gesture.kind==='time')viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,Math.round(gesture.count*Math.exp(-dx/180))));else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true}}}priceRange=null;selectedBar=null;requestDraw()});
  function finishPointer(e){if(gesture&&!gesture.moved&&drawingMap){if(gesture.kind==='price'||gesture.kind==='time'){const now=Date.now();if(lastAxisTap&&lastAxisTap.kind===gesture.kind&&now-lastAxisTap.at<350){if(gesture.kind==='price'){manualPan=false;manualPriceRange=null;}else{viewCount=45;pan=0}priceRange=null;lastAxisTap=null;requestDraw()}else lastAxisTap={kind:gesture.kind,at:now}}}pointers.delete(e.pointerId);if(!pointers.size){gesture=null;canvas.style.cursor='default'}else{gesture=makeGesture([...pointers.values()][0],'pan');gesture.moved=true}}
  canvas.addEventListener('pointerup',finishPointer);canvas.addEventListener('pointercancel',()=>{pointers.clear();gesture=null;canvas.style.cursor='default'});canvas.addEventListener('lostpointercapture',e=>{if(pointers.has(e.pointerId)){pointers.clear();gesture=null}});
- canvas.addEventListener('wheel',e=>{e.preventDefault();if(stopDrag||dayOnly)return;if(axisAt(e.clientX,e.clientY)==='price'&&priceRange)manualPriceRange=scalePrice(priceRange,e.deltaY*.2);else viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount+(e.deltaY>0?4:-4)));priceRange=null;requestDraw()},{passive:false});
+ canvas.addEventListener('wheel',e=>{e.preventDefault();if(stopDrag)return;leaveWholeDay();if(axisAt(e.clientX,e.clientY)==='price'&&priceRange)manualPriceRange=scalePrice(priceRange,e.deltaY*.2);else viewCount=Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount+(e.deltaY>0?4:-4)));priceRange=null;requestDraw()},{passive:false});
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing){stop();notify('已暫停播放')}});new ResizeObserver(()=>{priceRange=null;requestDraw()}).observe($('chartWrap'));
  document.addEventListener('keydown',e=>{if(e.repeat||document.querySelector('dialog[open]')||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();togglePlay()}if(e.code==='ArrowRight'){e.preventDefault();stop();nextBar()}if(e.code==='KeyA')trade(1);if(e.code==='KeyD')trade(-1)});
  if(document.modelContext?.registerTool){const tool={name:'read_replay_state',description:'Read only the currently revealed replay price, time, position and profit. Does not disclose future candles.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute(input){if(input&&Object.keys(input).length)throw Error('No input fields accepted');return{time:time(currentTime()),price:currentPrice(),position,average,realized,floating:floating(),playing,mode,timeframe:tf,demo:demoMode}}};try{Promise.resolve(document.modelContext.registerTool(tool)).catch(()=>{})}catch{}}
