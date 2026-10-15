@@ -1,8 +1,8 @@
 'use strict';
 // Bump this version when changing the offline shell or bundled market data.
 const CACHE_PREFIX = 'mobile-k-replay-offline-';
-const CACHE_NAME = CACHE_PREFIX + 'v7';
-const SHELL = ['./', './index.html', './style.css?v=24', './app.js?v=25',
+const CACHE_NAME = CACHE_PREFIX + 'v8';
+const SHELL = ['./', './index.html', './style.css?v=25', './app.js?v=26',
   './csv.js', './storage.js?v=8', './pwa.js?v=2', './manifest.webmanifest',
   './icon-180.png', './icon-192.png', './icon-512.png', './data/index.json'];
 self.addEventListener('install', event => {
