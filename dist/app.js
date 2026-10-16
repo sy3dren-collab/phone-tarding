@@ -169,15 +169,18 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  const virtualEnd=wholeDayFit?vis.length:Math.max(lower+1,vis.length-pan),end=Math.min(vis.length,Math.ceil(virtualEnd));
  const plotStart=wholeDayFit?todayStart:virtualEnd-count,start=Math.max(lower,Math.floor(plotStart)),dx=plotW/count,x=n=>left+(n-plotStart+.5)*dx;
  const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));
+ const marketRange=[lo,hi];
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average)}if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice)}let pad=Math.max(12,(hi-lo)*.16);lo-=pad;hi+=pad;
- // Horizontal following leaves the chosen vertical viewport unchanged.
+ // Keep the viewport steady; only revealed market prices crossing its edges
+ // may expand it. Gestures and historical panning keep their chosen view.
  centerManualPriceOnce();
  const required=[lo+pad,hi-pad];
  const key=selectedDay+':'+idx+':'+position+':'+average+':'+stopPrice+':'+(live?live.i+','+live.bar.h+','+live.bar.l:'');
  const changed=timeframeFitKeys[tf]!==key;
  if(!wholeDayFit&&manualPriceRange){
+  if(changed&&!gesture&&!stopDrag&&!horizontalDrag&&x(vis.length-1)>=left&&x(vis.length-1)<=w-right)manualPriceRange=expandRange(manualPriceRange,marketRange);
   [lo,hi]=manualPriceRange;
  }else if(!wholeDayFit&&priceRange){
   [lo,hi]=priceRange;
@@ -324,13 +327,18 @@ function drawIntraday(w,h){
  let end=points.findIndex(p=>p.t>to);end=end<0?points.length:Math.min(points.length,end+1);
  const shown=points.slice(first,Math.max(first+1,end));
  let lo=Math.min(...shown.map(p=>p.c)),hi=Math.max(...shown.map(p=>p.c));
+ const marketRange=[lo,hi];
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average);}
  if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice);}
  const pad=Math.max(12,(hi-lo)*.15);lo-=pad;hi+=pad;
  centerManualPriceOnce();
+ const key=selectedDay+':'+idx+':'+(live?live.i+','+live.bar.c:'');
+ const changed=timeframeFitKeys[tf]!==key;
  if(!wholeDayFit&&manualPriceRange){
+  if(changed&&!gesture&&!stopDrag&&!horizontalDrag&&lastTime>=from&&lastTime<=to)manualPriceRange=expandRange(manualPriceRange,marketRange);
   [lo,hi]=manualPriceRange;
  }
+ timeframeFitKeys[tf]=key;
  if(stopDrag||horizontalDrag){const d=stopDrag||horizontalDrag;lo=d.lo;hi=d.hi;}
  priceRange=[lo,hi];const y=v=>top+(hi-v)/(hi-lo)*plotH;
  ctx.font='10px -apple-system,sans-serif';ctx.lineWidth=1;
