@@ -29,7 +29,7 @@ function currentPrice(){return live?live.bar.c:idx>=0?rows[idx].c:null}
 function currentTime(){return live?rows[live.i].t+live.progress*MIN:idx>=0?rows[idx].t+MIN:rows[dayStart]?.t}
 function floating(){const p=currentPrice();return p===null||!position?0:(p-Math.sign(position)*slippage-average)*position*multiplier-Math.abs(position)*cost*2}
 function signed(el,n,text){el.textContent=text;el.classList.toggle('positive',n>0);el.classList.toggle('negative',n<0)}
-function update(){const intraday=chartType==='intraday';$('lineChart').classList.toggle('selected',intraday);$('lineChart').setAttribute('aria-pressed',String(intraday));$('lineChart').disabled=builtinLoading||importing||!rememberReady;$('enterFullscreen').disabled=builtinLoading||importing||!rememberReady;$('addHorizontal').disabled=builtinLoading||importing||!rememberReady;$('clearHorizontal').disabled=builtinLoading||importing||!rememberReady;document.querySelector('.periods').hidden=intraday;$('intradayLabel').hidden=!intraday;$('chart').setAttribute('aria-label',intraday?'當日分時價格線，只顯示已揭露的行情，可雙指縮放及拖曳':'已揭露的K線圖，可雙指縮放及拖曳');$('dayOnly').classList.toggle('selected',dayOnly||intraday);$('dayOnly').setAttribute('aria-pressed',String(dayOnly||intraday));$('dayOnly').disabled=intraday||builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=builtinLoading||importing||!rememberReady;$('wholeDay').classList.toggle('selected',wholeDayFit);$('wholeDay').setAttribute('aria-pressed',String(wholeDayFit));$('wholeDay').setAttribute('aria-label',wholeDayFit?'離開全日顯示，恢復手動縮放並跟隨最新價格':'自動縮放顯示當日已揭露的全部走勢');const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
+function update(){const intraday=chartType==='intraday';$('lineChart').classList.toggle('selected',intraday);$('lineChart').setAttribute('aria-pressed',String(intraday));$('lineChart').disabled=builtinLoading||importing||!rememberReady;$('enterFullscreen').disabled=builtinLoading||importing||!rememberReady;$('addHorizontal').disabled=builtinLoading||importing||!rememberReady;$('clearHorizontal').disabled=builtinLoading||importing||!rememberReady;document.querySelector('.periods').hidden=intraday;$('intradayLabel').hidden=!intraday;$('chart').setAttribute('aria-label',intraday?'當日分時價格與成交量，只顯示已揭露的行情，可雙指縮放及拖曳':'已揭露的K線與成交量圖，可雙指縮放及拖曳');$('dayOnly').classList.toggle('selected',dayOnly||intraday);$('dayOnly').setAttribute('aria-pressed',String(dayOnly||intraday));$('dayOnly').disabled=intraday||builtinLoading||importing||!rememberReady;for(const id of ['zoomIn','zoomOut','latest','wholeDay'])$(id).disabled=builtinLoading||importing||!rememberReady;$('wholeDay').classList.toggle('selected',wholeDayFit);$('wholeDay').setAttribute('aria-pressed',String(wholeDayFit));$('wholeDay').setAttribute('aria-label',wholeDayFit?'離開全日顯示，恢復手動縮放並跟隨最新價格':'自動縮放顯示當日已揭露的全部走勢');const p=currentPrice(),now=currentTime();$('price').textContent=p===null?'—':fmt(p);$('clock').textContent=now?clock(now):'—';$('dateLabel').textContent=now?date(now):'—';$('sourceBadge').textContent=demoMode?'示範行情 · 非真實報價':(builtin?'小台日盤 · ':'CSV · ')+selectedDay;$('sourceBadge').style.color=demoMode?'#e5b764':'#95a3b6';
  signed($('position'),position,position?(position>0?'多 ':'空 ')+Math.abs(position)+' 口':'0 口');$('average').textContent='均價 '+(position?fmt(average,2):'—');signed($('floating'),floating(),fmt(Math.abs(floating()),0));$('points').textContent=position?fmt((p-Math.sign(position)*slippage-average)*Math.sign(position),1)+' 點／口':'0 點';signed($('realized'),realized,fmt(Math.abs(realized),0));$('total').textContent='合計 '+money(realized+floating());signed($('fullscreenPnl'),realized+floating(),money(realized+floating()));$('fullscreenPnl').setAttribute('aria-label','本次合計損益 '+money(realized+floating()));
  $('play').textContent=playing?'Ⅱ 暫停':'▶ 播放';$('play').setAttribute('aria-pressed',String(playing));$('fullscreenPlay').textContent=playing?'Ⅱ':'▶';$('fullscreenPlay').setAttribute('aria-label',playing?'暫停':'播放');$('fullscreenPlay').setAttribute('aria-pressed',String(playing));const ended=idx>=dayEnd&&!live;$('closeDay').disabled=builtinLoading||importing||!rememberReady||ended;$('randomDay').disabled=builtinLoading||importing||!rememberReady;$('stopLoss').disabled=!position||ended||builtinLoading||importing;$('stopLoss').classList.toggle('selected',stopPrice!==null);$('stopLoss').setAttribute('aria-pressed',String(stopPrice!==null));$('play').disabled=builtinLoading||importing||!rememberReady;$('fullscreenPlay').disabled=$('play').disabled;$('buy').disabled=$('sell').disabled=builtinLoading||p===null||ended||idx<dayStart&&!live;$('barStatus').textContent=ended?'當日資料結束':live?'形成中':idx<dayStart?'等待第一根':intraday?'分時 · 1 分鐘':(rows[idx]&&rows[idx+1]&&bucket(rows[idx].t)===bucket(rows[idx+1].t)?'形成中':'已收 K');
  $('modeHint').textContent=ended?'本日結束 · 已自動平倉':mode==='dynamic'?'OHLC 模擬路徑 · 非真實逐筆':'反向按鈕減倉，歸零後再按才反手';$('multiplier').disabled=$('cost').disabled=$('slippage').disabled=!!fills.length;
@@ -161,8 +161,39 @@ function showWholeDay(){
  wholeDayFit=true;pan=0;manualPan=false;priceRange=null;selectedBar=null;
  delete timeframeFitKeys[tf];update();
 }
-function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bounds.height;if(!w||!h)return;const dpr=Math.min(window.devicePixelRatio||1,3);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);if(chartType==='intraday'){drawIntraday(w,h);return;}const vis=getVisibleSeries();if(!vis.length){$('stopHandle').hidden=true;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('按「播放」開始複盤',w/2,h/2);$('legend').replaceChildren();drawingMap=null;renderHorizontalLines();return}
- const right=30,left=8,top=chartFullscreen?12:(w>500&&h<400?(ma.some(m=>m.on)?50:38):(ma.some(m=>m.on)?30:14)),bottom=21,plotW=w-right-left,plotH=Math.max(40,h-top-bottom);
+// Price and volume share one time transform, including partial revealed bars.
+function volumeLayout(w,h,left,right){
+ const height=Math.max(28,Math.min(90,Math.round(h*.18)));
+ return{w,left,right,height,top:h-21-height};
+}
+function drawVolume(entries,layout,dx){
+ const {w,left,right,top,height}=layout;
+ const visible=entries.filter(e=>e.x+dx/2>=left&&e.x-dx/2<=w-right);
+ const max=Math.max(0,...visible.map(e=>e.bar.v)),last=visible.at(-1)?.bar.v??0;
+ ctx.save();ctx.beginPath();ctx.rect(left,top,w-left-right,height);ctx.clip();
+ ctx.strokeStyle='#25303e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,top+.5);ctx.lineTo(w-right,top+.5);ctx.stroke();
+ const base=top+height,available=Math.max(5,height-17),bw=Math.min(dx*.85,Math.max(.5,dx*.63));
+ for(const {bar,x} of visible){
+  if(!(bar.v>0)||!max)continue;
+  const bh=bar.v/max*available;
+  ctx.fillStyle=bar.c>=bar.o?'#ff435baa':'#f0f3f8aa';ctx.fillRect(x-bw/2,base-bh,bw,bh);
+ }
+ ctx.fillStyle='#95a3b6';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='left';
+ ctx.fillText((live?'成交量 · 模擬 ':'成交量 ')+fmt(last,0),left+3,top+12);
+ ctx.restore();
+ return{...layout,max,last,count:visible.length};
+}
+function intradayVolumeEntries(from,to,x){
+ const entries=[];
+ for(let n=dayStart;n<=Math.min(idx,dayEnd);n++){
+  const bar=rows[n];if(bar.t+MIN<from||bar.t>to)continue;
+  entries.push({bar,x:x(bar.t+MIN/2)});
+ }
+ if(live&&live.i>=dayStart&&live.i<=dayEnd){const bar=live.bar;if(bar.t+MIN>=from&&bar.t<=to)entries.push({bar,x:x(bar.t+MIN/2)});}
+ return entries;
+}
+function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bounds.height;if(!w||!h)return;const dpr=Math.min(window.devicePixelRatio||1,3);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);if(chartType==='intraday'){drawIntraday(w,h);return;}const vis=getVisibleSeries();if(!vis.length){drawVolume([],volumeLayout(w,h,8,30),1);$('stopHandle').hidden=true;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('按「播放」開始複盤',w/2,h/2);$('legend').replaceChildren();drawingMap=null;renderHorizontalLines();return}
+ const right=30,left=8,top=chartFullscreen?12:ma.some(m=>m.on)?30:14,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-right-left,plotH=Math.max(40,h-top-bottom);
  const todayStart=series[tf].map[dayStart],count=wholeDayFit?Math.max(12,vis.length-todayStart+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
  const lower=dayOnly||wholeDayFit?todayStart:0;
  pan=Math.max(-(count-5),Math.min(pan,Math.max(0,vis.length-lower-1)));
@@ -190,16 +221,16 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  if(stopDrag||horizontalDrag){const d=stopDrag||horizontalDrag;lo=d.lo;hi=d.hi;}priceRange=[lo,hi];const y=v=>top+(hi-v)/(hi-lo)*plotH;
 
  ctx.lineWidth=1;ctx.font='10px -apple-system,sans-serif';ctx.textAlign='left';for(let n=0;n<=4;n++){const yy=top+plotH*n/4,val=hi-(hi-lo)*n/4;ctx.strokeStyle='#1b2431';ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.fillStyle='#92a0b3';ctx.fillText(String(Math.round(val)),w-right+2,yy+4,right-4)}
- ctx.save();ctx.beginPath();ctx.rect(left,top-20,plotW,plotH+30);ctx.clip();for(let n=start;n<end;n++){let b=vis.get(n),xx=x(n),col=b.c>=b.o?'#ff435b':'#f0f3f8',bw=Math.min(dx*.85,Math.max(.5,dx*.63));ctx.strokeStyle=col;ctx.lineWidth=Math.min(1,dx*.65);ctx.beginPath();ctx.moveTo(xx,y(b.h));ctx.lineTo(xx,y(b.l));ctx.stroke();ctx.fillStyle=col;ctx.fillRect(xx-bw/2,Math.min(y(b.o),y(b.c)),bw,Math.max(1.5,Math.abs(y(b.o)-y(b.c))))}
+ ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,plotH);ctx.clip();for(let n=start;n<end;n++){let b=vis.get(n),xx=x(n),col=b.c>=b.o?'#ff435b':'#f0f3f8',bw=Math.min(dx*.85,Math.max(.5,dx*.63));ctx.strokeStyle=col;ctx.lineWidth=Math.min(1,dx*.65);ctx.beginPath();ctx.moveTo(xx,y(b.h));ctx.lineTo(xx,y(b.l));ctx.stroke();ctx.fillStyle=col;ctx.fillRect(xx-bw/2,Math.min(y(b.o),y(b.c)),bw,Math.max(1.5,Math.abs(y(b.o)-y(b.c))))}
  ma.forEach(m=>{if(!m.on)return;ctx.strokeStyle=m.color;ctx.lineWidth=1.3;ctx.beginPath();let first=true;for(let n=start;n<end;n++){let v=maValue(n,m.p);if(v===null)continue;if(first){ctx.moveTo(x(n),y(v));first=false}else ctx.lineTo(x(n),y(v))}ctx.stroke()});
  const timeIndex=new Map();for(let n=start;n<end;n++)timeIndex.set(vis.get(n).t,n);fills.forEach(f=>{let n=timeIndex.get(bucket(f.t));if(n===undefined)return;let xx=x(n),yy=y(f.p);ctx.fillStyle=f.side>0?'#ff244a':'#00f39a';ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(xx,yy+(f.side>0?-6:6));ctx.lineTo(xx-5,yy+(f.side>0?4:-4));ctx.lineTo(xx+5,yy+(f.side>0?4:-4));ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle=f.side>0?'#ff435b':'#25e19a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xx-7,yy);ctx.lineTo(xx+7,yy);ctx.stroke()});
  if(position){ctx.strokeStyle=position>0?'#ff435b88':'#25e19a88';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,y(average));ctx.lineTo(w-right,y(average));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=position>0?'#ff6578':'#25e19a';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='left';ctx.fillText('持倉均價 '+fmt(average,2),left+3,y(average)-4)}ctx.restore();
- const handle=$('stopHandle');handle.hidden=stopPrice===null||!position;
+ const handle=$('stopHandle');handle.hidden=stopPrice===null||!position||stopPrice<lo||stopPrice>hi;
  if(!handle.hidden){const yy=y(stopPrice);ctx.strokeStyle='#f5cd48';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.setLineDash([]);handle.style.top=Math.max(top,Math.min(h-bottom,yy))+'px';handle.textContent='';handle.setAttribute('aria-label','停損 '+fmt(stopPrice)+'，上下拖曳調整');}
 
  const p=currentPrice();if(p!==null&&p>=lo&&p<=hi){ctx.strokeStyle='#7894b877';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(left,y(p));ctx.lineTo(w-right,y(p));ctx.stroke();ctx.setLineDash([]);}
  ctx.fillStyle='#8492a6';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='center';for(let n=start;n<end;n+=Math.max(1,Math.floor(count/4))){let b=vis.get(n);ctx.fillText(clock(b.t).slice(0,5),x(n),h-8)}let selected=selectedBar!==null?Math.max(start,Math.min(end-1,selectedBar)):end-1;const b=vis.get(selected);
- $('legend').replaceChildren(...ma.filter(m=>m.on).map(m=>{let e=document.createElement('span');e.style.color=m.color;const v=maValue(selected,m.p);e.textContent='MA'+m.p+' '+(v===null?'—':fmt(v));return e}));drawingMap={start,end,plotStart,dx,left,w,h,right,bottom,top,plotH,lo,hi};renderHorizontalLines();}
+ $('legend').replaceChildren(...ma.filter(m=>m.on).map(m=>{let e=document.createElement('span');e.style.color=m.color;const v=maValue(selected,m.p);e.textContent='MA'+m.p+' '+(v===null?'—':fmt(v));return e}));const volume=drawVolume(bars.map((bar,i)=>({bar,x:x(start+i)})),volumeLayoutMap,dx);drawingMap={start,end,plotStart,dx,left,w,h,right,bottom,top,plotH,lo,hi,volume};renderHorizontalLines();}
 // Price annotations are shared by chart types and stored separately from orders.
 function horizontalKey(){return JSON.stringify([builtin?'builtin':demoMode?'demo':'csv',sourceName,selectedDay]);}
 function horizontalLines(){return horizontalBook[horizontalKey()]||[];}
@@ -315,8 +346,8 @@ function intradayPoints(){
 }
 function drawIntraday(w,h){
  const points=intradayPoints(),handle=$('stopHandle');$('legend').replaceChildren();
- if(!points.length){handle.hidden=true;drawingMap=null;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('當日分時 · 按「播放」從開盤開始',w/2,h/2);return;}
- const left=8,right=42,top=chartFullscreen?12:w>500&&h<400?38:20,bottom=24,plotW=w-left-right,plotH=Math.max(40,h-top-bottom);
+ if(!points.length){drawVolume([],volumeLayout(w,h,8,42),1);handle.hidden=true;drawingMap=null;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('當日分時 · 按「播放」從開盤開始',w/2,h/2);return;}
+ const left=8,right=42,top=chartFullscreen?12:20,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-left-right,plotH=Math.max(40,h-top-bottom);
  const openingTime=points[0].t,lastTime=points[points.length-1].t;
  const count=wholeDayFit?Math.max(12,(lastTime-openingTime)/MIN+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
  pan=Math.max(-(count-5),Math.min(pan,Math.max(0,(lastTime-openingTime)/MIN)));
@@ -356,9 +387,10 @@ function drawIntraday(w,h){
  const last=points[points.length-1];ctx.fillStyle='#f4cb69';ctx.beginPath();ctx.arc(x(last.t),y(last.c),3,0,Math.PI*2);ctx.fill();
  for(const f of fills){if(f.t<from||f.t>last.t)continue;const xx=x(f.t),yy=y(f.p);ctx.fillStyle=f.side>0?'#ff435b':'#25e19a';ctx.beginPath();ctx.moveTo(xx,yy+(f.side>0?-6:6));ctx.lineTo(xx-5,yy+(f.side>0?4:-4));ctx.lineTo(xx+5,yy+(f.side>0?4:-4));ctx.closePath();ctx.fill();}
  if(position){ctx.strokeStyle=position>0?'#ff435b88':'#25e19a88';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,y(average));ctx.lineTo(w-right,y(average));ctx.stroke();ctx.setLineDash([]);}
- ctx.restore();handle.hidden=stopPrice===null||!position;
+ ctx.restore();handle.hidden=stopPrice===null||!position||stopPrice<lo||stopPrice>hi;
  if(!handle.hidden){const yy=y(stopPrice);ctx.strokeStyle='#f5cd48';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.setLineDash([]);handle.style.top=Math.max(top,Math.min(h-bottom,yy))+'px';handle.setAttribute('aria-label','停損 '+fmt(stopPrice)+'，上下拖曳調整');}
- drawingMap={left,right,top,bottom,w,h,plotH,lo,hi,from,to,dx,points:points.length};renderHorizontalLines();
+ const volume=drawVolume(intradayVolumeEntries(from,to,x),volumeLayoutMap,dx);
+ drawingMap={left,right,top,bottom,w,h,plotH,lo,hi,from,to,dx,points:points.length,volume};renderHorizontalLines();
 }
 function captureChartViewport(){
  return {count:viewCount,pan,manualPan,fit:wholeDayFit,
@@ -468,7 +500,7 @@ $('randomDay').onclick=async()=>{
  canvas.addEventListener('gesturestart',e=>{if(e.cancelable)e.preventDefault()},{passive:false});
  canvas.addEventListener('gesturechange',e=>{if(e.cancelable)e.preventDefault()},{passive:false});
  const pointers=new Map();let gesture=null,lastAxisTap=null;
- function axisAt(x,y){if(!drawingMap)return 'pan';const r=canvas.getBoundingClientRect();if(x-r.left>=drawingMap.w-drawingMap.right)return 'price';if(y-r.top>=drawingMap.h-drawingMap.bottom-8)return 'time';return 'pan'}
+ function axisAt(x,y){if(!drawingMap)return 'pan';const r=canvas.getBoundingClientRect();if(x-r.left>=drawingMap.w-drawingMap.right)return 'price';if(y-r.top>=drawingMap.h-24)return 'time';return 'pan'}
  function makeGesture(p,kind=axisAt(p.x,p.y)){return{kind,x:p.x,y:p.y,pan,count:viewCount,dist:0,moved:false,range:priceRange?[...priceRange]:drawingMap?[drawingMap.lo,drawingMap.hi]:null,plotH:drawingMap?.plotH||1,dx:drawingMap?.dx||8}}
  function translatePrice(range,dy,height){const shift=dy*(range[1]-range[0])/Math.max(1,height);return[range[0]+shift,range[1]+shift]}
  function scalePrice(range,dy){const mid=(range[0]+range[1])/2,span=Math.max(2,Math.min(100000,(range[1]-range[0])*Math.exp(dy/180)));return[mid-span/2,mid+span/2]}

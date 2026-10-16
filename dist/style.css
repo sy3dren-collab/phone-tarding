@@ -262,3 +262,16 @@ html,body{touch-action:manipulation;background-color:var(--bg)}
 .speed-control select{padding-inline:2px}
 
 .app{touch-action:pan-x pan-y}
+
+/* Tools sit above the shared price/volume canvas, never over the candles. */
+.chart-actions{position:static;inset:auto;flex:0 0 auto;display:flex;flex-wrap:nowrap;align-items:center;gap:4px;max-width:none;min-width:0;padding:3px 8px;border-bottom:1px solid #1b2533;z-index:auto}
+.chart-actions button{flex:1 1 auto;white-space:nowrap;min-height:30px;height:30px;padding:3px 7px}
+@media (orientation:landscape) and (max-height:500px){
+ .app{grid-template-rows:32px 34px minmax(0,1fr) auto}
+ .chartbar{position:static;inset:auto;grid-column:1;grid-row:2;min-width:0;padding:0 5px;z-index:auto}
+ .chart-actions{grid-column:2;grid-row:2;padding:2px 5px;gap:3px;border-bottom:0}
+ .chart-actions button{padding-inline:5px;min-height:28px;height:28px}
+ #chartWrap{grid-row:3}
+ .desk{grid-row:4}
+ .legend{top:6px}
+}
