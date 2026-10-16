@@ -100,7 +100,15 @@ async function togglePlay(){
 }
 function changeMode(next){if(mode===next)return;if(next==='single'&&live){checkStopPath(rows[live.i],live.progress,1);idx=live.i;live=null;endCheck()}mode=next;elapsed=0;prevWall=0;priceRange=null;speedOptions();update()}
 function speedOptions(){const opts=mode==='single'?[[2000,'2 秒／根'],[1500,'1.5 秒／根'],[1000,'1 秒／根'],[500,'0.5 秒／根']]:[[1,'1 倍'],[4,'4 倍'],[8,'8 倍'],[16,'16 倍'],[24,'24 倍']];$('speed').replaceChildren(...opts.map(([v,l])=>new Option(l,v)));$('speed').value=mode==='single'?singleMs:dynamicRate}
-function clearTrades(){finishHorizontalDrag(true,false);horizontalTap=null;intradayViewport=null;candleViewport=null;wholeDayFit=chartType==='intraday';wholeDaySaved=wholeDayFit?{1:{count:viewCount,range:null}}:{};stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=null;position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null}
+function clearTrades(){
+ // Reset the account and day position, retaining the chosen zoom. Annotation
+ // prices are independent of the market viewport and must never drive its fit.
+ const range=rememberReady?(manualPriceRange||(!wholeDayFit?priceRange:null)):null;
+ const keptRange=range?[...range]:null;
+ finishHorizontalDrag(true,false);horizontalTap=null;intradayViewport=null;candleViewport=null;
+ stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=keptRange;
+ position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null;
+}
 function setDay(d){stop();clearTrades();selectedDay=d;dayStart=rows.findIndex(r=>date(r.t)===d);dayEnd=dayStart;while(dayEnd+1<rows.length&&date(rows[dayEnd+1].t)===d)dayEnd++;idx=dayStart-1;$('datePick').value=d;update();rememberSelection()}
 function install(data,name,isDemo,options={}){stop();clearTrades();idx=-1;builtin=!!options.builtin;rows=data;series={};for(const p of [1,5,30])series[p]=buildSeries(data,p);sourceName=name;demoMode=isDemo;const dates=options.dates||[...new Set(rows.map(r=>date(r.t)))];$('datePick').replaceChildren(...dates.map(d=>new Option(d,d)));$('fileInfo').textContent=(isDemo?'合成示範 · 非真實歷史行情':name)+' · '+fmt(rows.length,0)+' 根 1 分 K';setDay(options.day||(isDemo?dates[dates.length-1]:dates[0]));}
 async function loadBuiltin(day){
@@ -152,7 +160,6 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  const bars=[];for(let n=start;n<end;n++)bars.push(vis.get(n));let lo=Math.min(...bars.map(r=>r.l)),hi=Math.max(...bars.map(r=>r.h));
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
- for(const line of horizontalLines()){lo=Math.min(lo,line.price);hi=Math.max(hi,line.price)}
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average)}if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice)}let pad=Math.max(12,(hi-lo)*.16);lo-=pad;hi+=pad;
  // Manual zoom keeps its span; following shifts the center instead of shrinking candles.
  const required=[lo+pad,hi-pad];
@@ -308,7 +315,6 @@ function drawIntraday(w,h){
  let end=points.findIndex(p=>p.t>to);end=end<0?points.length:Math.min(points.length,end+1);
  const shown=points.slice(first,Math.max(first+1,end));
  let lo=Math.min(...shown.map(p=>p.c)),hi=Math.max(...shown.map(p=>p.c));
- for(const line of horizontalLines()){lo=Math.min(lo,line.price);hi=Math.max(hi,line.price);}
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average);}
  if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice);}
  const pad=Math.max(12,(hi-lo)*.15);lo-=pad;hi+=pad;
