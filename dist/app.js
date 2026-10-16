@@ -10,7 +10,7 @@ const horizontalElements=new Map();let horizontalRenderedKey=null;
 let sourceName='示範行情', demoMode=true, viewCount=45, pan=0, selectedBar=null, priceRange=null;
 let ma=[{on:false,p:5,color:'#ffce5c'},{on:false,p:10,color:'#71baff'},{on:false,p:20,color:'#d3a0ff'}];
 let builtin=false,builtinIndex=null,builtinLoading=false,builtinMonthCache=new Map();
-let manualPriceRange=null,manualPan=false;
+let manualPriceRange=null,manualPan=false,priceCenterPending=false;
 let timeframeViews={},timeframeFitKeys={};
 let rememberReady=false,dayOnly=false;
 let wholeDayFit=false,wholeDaySaved={};
@@ -106,7 +106,7 @@ function clearTrades(){
  const range=rememberReady?(manualPriceRange||(!wholeDayFit?priceRange:null)):null;
  const keptRange=range?[...range]:null;
  finishHorizontalDrag(true,false);horizontalTap=null;intradayViewport=null;candleViewport=null;
- stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=keptRange;
+ stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=keptRange;priceCenterPending=!!keptRange;
  position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null;
 }
 function setDay(d){stop();clearTrades();selectedDay=d;dayStart=rows.findIndex(r=>date(r.t)===d);dayEnd=dayStart;while(dayEnd+1<rows.length&&date(rows[dayEnd+1].t)===d)dayEnd++;idx=dayStart-1;$('datePick').value=d;update();rememberSelection()}
@@ -136,12 +136,23 @@ function expandRange(range,required){
  const pad=Math.max(4,(required[1]-required[0])*.06);
  return[Math.min(range[0],required[0]-pad),Math.max(range[1],required[1]+pad)];
 }
+// Recenter only for an explicit latest/full-day exit or the first revealed
+// price of a new replay, never as a side effect of horizontal following.
+function centerManualPriceOnce(){
+ if(!priceCenterPending||idx<dayStart&&!live)return;
+ if(manualPriceRange){
+  const span=manualPriceRange[1]-manualPriceRange[0],center=currentPrice();
+  if(center!==null)manualPriceRange=[center-span/2,center+span/2];
+ }
+ priceCenterPending=false;
+}
 // Full-day fit never reveals future bars and keeps the manual scale separately.
 function leaveWholeDay(){
  if(!wholeDayFit)return;
  const saved=wholeDaySaved[tf];
  if(saved){viewCount=saved.count;manualPriceRange=saved.range?[...saved.range]:null;}
  wholeDayFit=false;manualPan=false;pan=0;priceRange=null;selectedBar=null;
+ priceCenterPending=true;centerManualPriceOnce();
  delete timeframeFitKeys[tf];update();
 }
 function showWholeDay(){
@@ -161,14 +172,12 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  function maValue(n,p){if(n+1<p)return null;return (vis.sumBefore(n)-vis.sumBefore(n+1-p)+vis.get(n).c)/p}
  ma.forEach(m=>{if(m.on){for(let n=start;n<end;n++){const v=maValue(n,m.p);if(v!==null){lo=Math.min(lo,v);hi=Math.max(hi,v)}}}});
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average)}if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice)}let pad=Math.max(12,(hi-lo)*.16);lo-=pad;hi+=pad;
- // Manual zoom keeps its span; following shifts the center instead of shrinking candles.
+ // Horizontal following leaves the chosen vertical viewport unchanged.
+ centerManualPriceOnce();
  const required=[lo+pad,hi-pad];
  const key=selectedDay+':'+idx+':'+position+':'+average+':'+stopPrice+':'+(live?live.i+','+live.bar.h+','+live.bar.l:'');
  const changed=timeframeFitKeys[tf]!==key;
  if(!wholeDayFit&&manualPriceRange){
-  const span=manualPriceRange[1]-manualPriceRange[0];
-  const center=currentPrice()??((manualPriceRange[0]+manualPriceRange[1])/2);
-  if(!manualPan&&!gesture&&!stopDrag)manualPriceRange=[center-span/2,center+span/2];
   [lo,hi]=manualPriceRange;
  }else if(!wholeDayFit&&priceRange){
   [lo,hi]=priceRange;
@@ -318,9 +327,8 @@ function drawIntraday(w,h){
  if(position){lo=Math.min(lo,average);hi=Math.max(hi,average);}
  if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice);}
  const pad=Math.max(12,(hi-lo)*.15);lo-=pad;hi+=pad;
+ centerManualPriceOnce();
  if(!wholeDayFit&&manualPriceRange){
-  const span=manualPriceRange[1]-manualPriceRange[0],center=currentPrice();
-  if(!manualPan&&!gesture&&!stopDrag)manualPriceRange=[center-span/2,center+span/2];
   [lo,hi]=manualPriceRange;
  }
  if(stopDrag||horizontalDrag){const d=stopDrag||horizontalDrag;lo=d.lo;hi=d.hi;}
@@ -391,7 +399,7 @@ function toggleDayOnly(){
 }
 function confirmReset(){return !fills.length||confirm('重新開始會清除本次交易與損益，確定重播？')}
 $('dayOnly').onclick=toggleDayOnly;$('wholeDay').onclick=showWholeDay;$('play').onclick=togglePlay;$('fullscreenPlay').onclick=togglePlay;$('stopLoss').onclick=toggleStopLoss;$('buy').onclick=()=>trade(1);$('sell').onclick=()=>trade(-1);$('singleMode').onclick=()=>changeMode('single');$('dynamicMode').onclick=()=>changeMode('dynamic');$('speed').onchange=()=>{if(mode==='single')singleMs=+$('speed').value;else dynamicRate=+$('speed').value;elapsed=0};
- document.querySelectorAll('[data-tf]').forEach(b=>b.onclick=()=>switchTimeframe(+b.dataset.tf));$('latest').onclick=()=>{leaveWholeDay();manualPan=false;pan=0;selectedBar=null;priceRange=null;requestDraw()};$('zoomIn').onclick=()=>{leaveWholeDay();viewCount=Math.max(12,viewCount-8);priceRange=null;requestDraw()};$('zoomOut').onclick=()=>{leaveWholeDay();viewCount=Math.min(MAX_VISIBLE_BARS,viewCount+8);priceRange=null;requestDraw()};$('reset').onclick=()=>{if(builtinLoading)return;stop();if(confirmReset())setDay(selectedDay)};
+ document.querySelectorAll('[data-tf]').forEach(b=>b.onclick=()=>switchTimeframe(+b.dataset.tf));$('latest').onclick=()=>{leaveWholeDay();manualPan=false;pan=0;selectedBar=null;priceRange=null;priceCenterPending=true;centerManualPriceOnce();requestDraw()};$('zoomIn').onclick=()=>{leaveWholeDay();viewCount=Math.max(12,viewCount-8);priceRange=null;requestDraw()};$('zoomOut').onclick=()=>{leaveWholeDay();viewCount=Math.min(MAX_VISIBLE_BARS,viewCount+8);priceRange=null;requestDraw()};$('reset').onclick=()=>{if(builtinLoading)return;stop();if(confirmReset())setDay(selectedDay)};
  ['data','settings'].forEach(key=>$(key+'Open').onclick=()=>{stop();$(key+'Dialog').showModal()});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).close());
  $('startDay').onclick=async()=>{if(builtinLoading||!confirmReset())return;const chosen=$('datePick').value;if(builtin){if(await loadBuiltin(chosen))$('dataDialog').close()}else{setDay(chosen);$('dataDialog').close()}};$('builtin').onclick=async()=>{if(builtinLoading||!confirmReset())return;if(await loadBuiltin())$('dataDialog').close()};$('demo').onclick=()=>{if(confirmReset()){install(demoData(),'示範行情',true);$('dataDialog').close()}};
  function jumpToClose(){
@@ -518,7 +526,7 @@ $('randomDay').onclick=async()=>{
     else if(gesture.kind==='pan'){pan=gesture.pan+dx/gesture.dx;if(gesture.range)manualPriceRange=translatePrice(gesture.range,dy,gesture.plotH);manualPan=true;}
    }
   }
-  priceRange=null;selectedBar=null;requestDraw();
+  priceCenterPending=false;priceRange=null;selectedBar=null;requestDraw();
  });
  function finishPointer(e){
   if(gesture&&!gesture.moved&&drawingMap){
