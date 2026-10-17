@@ -247,13 +247,14 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
  body.chart-fullscreen .app{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:0;max-width:none;width:100%;height:var(--app-height,100vh);height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
  body.chart-fullscreen header,body.chart-fullscreen .quote,body.chart-fullscreen .chartbar,body.chart-fullscreen .chart-actions,body.chart-fullscreen #legend,body.chart-fullscreen #stopHandle{display:none}
  body.chart-fullscreen #chartWrap{position:relative;inset:auto;grid-column:1;grid-row:1;width:100%;height:100%;min-width:0;min-height:0}
- body.chart-fullscreen .desk{position:relative;inset:auto;grid-column:1;grid-row:2;z-index:15;display:grid;grid-template-columns:minmax(0,1fr) auto clamp(72px,12vw,132px);grid-template-rows:auto;align-items:center;gap:0 8px;width:100%;padding:4px 8px 6px;border:0;border-top:1px solid var(--line);border-radius:0;background:var(--panel)}
+ body.chart-fullscreen .desk{--fullscreen-key-width:clamp(32px,calc(6vw - 2.66px),50px);position:relative;inset:auto;grid-column:1;grid-row:2;z-index:15;display:grid;grid-template-columns:minmax(0,1fr) auto max-content;grid-template-rows:auto;align-items:center;gap:0 4px;width:100%;padding:4px 8px 6px;border:0;border-top:1px solid var(--line);border-radius:0;background:var(--panel)}
  body.chart-fullscreen .metrics,body.chart-fullscreen .playrow,body.chart-fullscreen .footnote{display:none}
- body.chart-fullscreen .fullscreen-pnl{display:block;grid-column:3;grid-row:1;min-width:0;width:auto;max-width:100%;text-align:right;font-size:16px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+ body.chart-fullscreen .fullscreen-pnl{display:block;grid-column:3;grid-row:1;min-width:0;width:max-content;max-width:clamp(72px,18vw,180px);text-align:right;font-size:16px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
  body.chart-fullscreen .traderow{display:contents}
  body.chart-fullscreen .replay-controls{grid-column:1;grid-row:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;width:100%;gap:4px}
  body.chart-fullscreen .trade-controls{grid-column:2;grid-row:1;display:flex;gap:4px;width:clamp(68px,calc(12vw - 1.32px),104px)}
- body.chart-fullscreen .traderow button{flex:0 0 clamp(32px,calc(6vw - 2.66px),50px);min-height:44px;padding:3px;font-size:20px;gap:5px}
+ body.chart-fullscreen .traderow button{flex:0 0 var(--fullscreen-key-width);min-height:44px;padding:3px;font-size:20px;gap:5px}
+ body.chart-fullscreen #fullscreenNext{flex-basis:calc(var(--fullscreen-key-width) * 2)}
  body.chart-fullscreen .trade-controls button{flex:1 1 0;min-width:0}
  body.chart-fullscreen .traderow span{display:none}
  body.chart-fullscreen .traderow .fullscreen-period{display:flex;flex-basis:44px;font-size:12px;background:#18212e;border:1px solid var(--line);color:var(--muted)}
