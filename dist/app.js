@@ -111,13 +111,27 @@ async function togglePlay(){
 }
 function changeMode(next){if(mode===next)return;if(next==='single'&&live){checkStopPath(rows[live.i],live.progress,1);idx=live.i;live=null;endCheck()}mode=next;elapsed=0;prevWall=0;priceRange=null;speedOptions();update()}
 function speedOptions(){const opts=mode==='single'?[[2000,'2 秒／根'],[1500,'1.5 秒／根'],[1000,'1 秒／根'],[500,'0.5 秒／根']]:[[1,'1 倍'],[4,'4 倍'],[8,'8 倍'],[16,'16 倍'],[24,'24 倍']];$('speed').replaceChildren(...opts.map(([v,l])=>new Option(l,v)));$('speed').value=mode==='single'?singleMs:dynamicRate}
+function rememberTimeframeView(){
+ timeframeViews[tf]={count:viewCount,pan,manualPan,fit:wholeDayFit,
+  range:manualPriceRange?[...manualPriceRange]:null,autoRange:priceRange?[...priceRange]:null,
+  centerPending:priceCenterPending,revealed:getVisibleSeries().length||0};
+}
+function priceFitKey(){return selectedDay+':'+idx+':'+position+':'+average+':'+stopPrice+':'+(live?live.i+','+live.bar.h+','+live.bar.l:'');}
 function clearTrades(){
  // Reset the account and day position, retaining the chosen zoom. Annotation
  // prices are independent of the market viewport and must never drive its fit.
  const range=rememberReady?(manualPriceRange||(!wholeDayFit?priceRange:null)):null;
  const keptRange=range?[...range]:null;
+ if(rememberReady){
+  rememberTimeframeView();
+  for(const view of Object.values(timeframeViews)){
+   const savedRange=view.range||(!view.fit?view.autoRange:null);
+   view.range=savedRange?[...savedRange]:null;view.autoRange=null;
+   view.pan=0;view.manualPan=false;view.revealed=0;view.centerPending=!!savedRange;
+  }
+ }
  finishHorizontalDrag(true,false);horizontalTap=null;intradayViewport=null;candleViewport=null;
- stopPrice=null;stopDrag=null;timeframeViews={};timeframeFitKeys={};manualPan=false;manualPriceRange=keptRange;priceCenterPending=!!keptRange;
+ stopPrice=null;stopDrag=null;timeframeFitKeys={};manualPan=false;manualPriceRange=keptRange;priceCenterPending=!!keptRange;
  position=0;average=0;realized=0;fills=[];live=null;elapsed=0;pan=0;priceRange=null;selectedBar=null;
 }
 function setDay(d){stop();clearTrades();selectedDay=d;dayStart=rows.findIndex(r=>date(r.t)===d);dayEnd=dayStart;while(dayEnd+1<rows.length&&date(rows[dayEnd+1].t)===d)dayEnd++;idx=dayStart-1;$('datePick').value=d;update();rememberSelection()}
@@ -226,7 +240,7 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  // steps) retain their scale; gestures and historical views stay in place.
  centerManualPriceOnce();
  const required=[lo+pad,hi-pad];
- const key=selectedDay+':'+idx+':'+position+':'+average+':'+stopPrice+':'+(live?live.i+','+live.bar.h+','+live.bar.l:'');
+ const key=priceFitKey();
  const changed=timeframeFitKeys[tf]!==key;
  if(!wholeDayFit&&manualPriceRange){
   if(changed&&(!manualPan||playing)&&!gesture&&!stopDrag&&!horizontalDrag&&x(vis.length-1)>=left&&x(vis.length-1)<=w-right)manualPriceRange=expandRange(manualPriceRange,marketRange);
@@ -381,7 +395,7 @@ function drawIntraday(w,h){
  if(stopPrice!==null){lo=Math.min(lo,stopPrice);hi=Math.max(hi,stopPrice);}
  const pad=Math.max(12,(hi-lo)*.15);lo-=pad;hi+=pad;
  centerManualPriceOnce();
- const key=selectedDay+':'+idx+':'+(live?live.i+','+live.bar.c:'');
+ const key=priceFitKey();
  const changed=timeframeFitKeys[tf]!==key;
  if(!wholeDayFit&&manualPriceRange){
   if(changed&&(!manualPan||playing)&&!gesture&&!stopDrag&&!horizontalDrag&&lastTime>=from&&lastTime<=to)manualPriceRange=expandRange(manualPriceRange,marketRange);
@@ -436,10 +450,7 @@ $('lineChart').onclick=toggleChartType;
 // Each timeframe owns its viewport; manual pans are anchored to revealed bars.
 function switchTimeframe(next){
  if(![1,5,30].includes(next)||next===tf||builtinLoading||importing)return;
- timeframeViews[tf]={count:viewCount,pan,manualPan,fit:wholeDayFit,
-  range:manualPriceRange?[...manualPriceRange]:null,
-  autoRange:priceRange?[...priceRange]:null,
-  revealed:getVisibleSeries().length||0};
+ rememberTimeframeView();
  tf=next;
  const saved=timeframeViews[tf];
  wholeDayFit=saved?.fit||false;
@@ -448,6 +459,9 @@ function switchTimeframe(next){
  pan=saved?saved.pan+(manualPan?(getVisibleSeries().length||0)-saved.revealed:0):0;
  manualPriceRange=saved?.range?[...saved.range]:null;
  priceRange=saved?.autoRange?[...saved.autoRange]:null;
+ priceCenterPending=saved?.centerPending||false;
+ // Restoring a saved scale must not fit it to prices revealed in another timeframe.
+ if(saved)timeframeFitKeys[tf]=priceFitKey();
  selectedBar=null;drawingMap=null;update();
 }
 function toggleDayOnly(){
