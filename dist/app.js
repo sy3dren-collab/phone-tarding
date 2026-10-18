@@ -498,6 +498,7 @@ $('fullscreenNext').addEventListener('pointerdown',e=>{
  if(e.button!==0||e.isPrimary===false||$('fullscreenNext').disabled)return;
  e.preventDefault();stepForward();
 });
+$('fullscreenNext').addEventListener('contextmenu',e=>e.preventDefault());
 $('fullscreenNext').onclick=e=>{if(e.detail===0&&!e.pointerType)stepForward();};
 document.querySelectorAll('[data-fullscreen-tf]').forEach(b=>b.onclick=()=>{
  if(builtinLoading||importing||!rememberReady)return;

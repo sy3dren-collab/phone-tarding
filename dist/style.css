@@ -285,3 +285,6 @@ html,body{touch-action:manipulation;background-color:var(--bg)}
  .desk{grid-row:4}
  .legend{top:6px}
 }
+
+/* Keep repeated taps and long presses on controls from selecting their labels. */
+button,button *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
