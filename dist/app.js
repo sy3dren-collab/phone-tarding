@@ -476,9 +476,15 @@ $('dayOnly').onclick=toggleDayOnly;$('wholeDay').onclick=showWholeDay;$('play').
  $('startDay').onclick=async()=>{if(builtinLoading||!confirmReset())return;const chosen=$('datePick').value;if(builtin){if(await loadBuiltin(chosen))$('dataDialog').close()}else{setDay(chosen);$('dataDialog').close()}};$('builtin').onclick=async()=>{if(builtinLoading||!confirmReset())return;if(await loadBuiltin())$('dataDialog').close()};$('demo').onclick=()=>{if(confirmReset()){install(demoData(),'示範行情',true);$('dataDialog').close()}};
  function jumpToClose(){
  if(builtinLoading||importing||!rememberReady||dayEnd<0)return;
+ const keptRange=!wholeDayFit&&(manualPriceRange||priceRange);
+ const closeRange=keptRange?[...keptRange]:null;
  playing=false;prevWall=0;for(let n=live?live.i:idx+1;n<=dayEnd;n++)checkStopPath(rows[n],live&&n===live.i?live.progress:0,1);live=null;elapsed=0;idx=dayEnd;
  manualPan=false;pan=0;selectedBar=null;priceRange=null;
- endCheck();update();notify('已跳至本日資料收盤');
+ if(closeRange){manualPriceRange=closeRange;priceCenterPending=true;centerManualPriceOnce();}
+ endCheck();
+ // Jump to the closing price once, preserving scale instead of fitting the skipped bars.
+ if(closeRange)timeframeFitKeys[tf]=priceFitKey();
+ update();notify('已跳至本日資料收盤');
 }
 $('closeDay').onclick=$('fullscreenClose').onclick=jumpToClose;
 function stepForward(){
