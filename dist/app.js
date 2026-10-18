@@ -206,8 +206,8 @@ function intradayVolumeEntries(from,to,x){
  if(live&&live.i>=dayStart&&live.i<=dayEnd){const bar=live.bar;if(bar.t+MIN>=from&&bar.t<=to)entries.push({bar,x:x(bar.t+MIN/2)});}
  return entries;
 }
-function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bounds.height;if(!w||!h)return;const dpr=Math.min(window.devicePixelRatio||1,3);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);if(chartType==='intraday'){drawIntraday(w,h);return;}const vis=getVisibleSeries();if(!vis.length){drawVolume([],volumeLayout(w,h,8,30),1);$('stopHandle').hidden=true;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('按「播放」開始複盤',w/2,h/2);$('legend').replaceChildren();drawingMap=null;renderHorizontalLines();return}
- const right=30,left=8,top=chartFullscreen?12:ma.some(m=>m.on)?30:14,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-right-left,plotH=Math.max(40,h-top-bottom);
+function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bounds.height;if(!w||!h)return;const dpr=Math.min(window.devicePixelRatio||1,3);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#090d14';ctx.fillRect(0,0,w,h);if(chartType==='intraday'){drawIntraday(w,h);return;}const vis=getVisibleSeries();if(!vis.length){drawVolume([],volumeLayout(w,h,chartFullscreen?0:8,30),1);$('stopHandle').hidden=true;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('按「播放」開始複盤',w/2,h/2);$('legend').replaceChildren();drawingMap=null;renderHorizontalLines();return}
+ const right=30,left=chartFullscreen?0:8,top=chartFullscreen?12:ma.some(m=>m.on)?30:14,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-right-left,plotH=Math.max(40,h-top-bottom);
  const todayStart=series[tf].map[dayStart],count=wholeDayFit?Math.max(12,vis.length-todayStart+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
  const lower=dayOnly||wholeDayFit?todayStart:0;
  pan=Math.max(-(count-5),Math.min(pan,Math.max(0,vis.length-lower-1)));
@@ -238,7 +238,7 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  timeframeFitKeys[tf]=key;
  if(stopDrag||horizontalDrag){const d=stopDrag||horizontalDrag;lo=d.lo;hi=d.hi;}priceRange=[lo,hi];const y=v=>top+(hi-v)/(hi-lo)*plotH;
 
- ctx.lineWidth=1;ctx.font='10px -apple-system,sans-serif';ctx.textAlign='left';for(let n=0;n<=4;n++){const yy=top+plotH*n/4,val=hi-(hi-lo)*n/4;if(!chartFullscreen){ctx.strokeStyle='#1b2431';ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();}ctx.fillStyle='#92a0b3';ctx.fillText(String(Math.round(val)),w-right+2,yy+4,right-4)}
+ ctx.lineWidth=1;ctx.font='10px -apple-system,sans-serif';ctx.textAlign='left';for(let n=0;n<=4;n++){const yy=top+plotH*n/4,val=hi-(hi-lo)*n/4;if(!chartFullscreen){ctx.strokeStyle='#1b2431';ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();}ctx.fillStyle='#92a0b3';ctx.textAlign=chartFullscreen?'right':'left';ctx.fillText(String(Math.round(val)),chartFullscreen?w:w-right+2,yy+4,right-4)}
  ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,plotH);ctx.clip();for(let n=start;n<end;n++){let b=vis.get(n),xx=x(n),col=b.c>=b.o?'#ff435b':'#f0f3f8',bw=Math.min(dx*.85,Math.max(.5,dx*.63));ctx.strokeStyle=col;ctx.lineWidth=Math.min(1,dx*.65);ctx.beginPath();ctx.moveTo(xx,y(b.h));ctx.lineTo(xx,y(b.l));ctx.stroke();ctx.fillStyle=col;ctx.fillRect(xx-bw/2,Math.min(y(b.o),y(b.c)),bw,Math.max(1.5,Math.abs(y(b.o)-y(b.c))))}
  ma.forEach(m=>{if(!m.on)return;ctx.strokeStyle=m.color;ctx.lineWidth=1.3;ctx.beginPath();let first=true;for(let n=start;n<end;n++){let v=maValue(n,m.p);if(v===null)continue;if(first){ctx.moveTo(x(n),y(v));first=false}else ctx.lineTo(x(n),y(v))}ctx.stroke()});
  const timeIndex=new Map();for(let n=start;n<end;n++)timeIndex.set(vis.get(n).t,n);fills.forEach(f=>{let n=timeIndex.get(bucket(f.t));if(n===undefined)return;let xx=x(n),yy=y(f.p);ctx.fillStyle=f.side>0?'#ff244a':'#00f39a';ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(xx,yy+(f.side>0?-6:6));ctx.lineTo(xx-5,yy+(f.side>0?4:-4));ctx.lineTo(xx+5,yy+(f.side>0?4:-4));ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle=f.side>0?'#ff435b':'#25e19a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xx-7,yy);ctx.lineTo(xx+7,yy);ctx.stroke()});
@@ -247,7 +247,7 @@ function draw(){const bounds=canvas.getBoundingClientRect(),w=bounds.width,h=bou
  if(!handle.hidden){const yy=y(stopPrice);ctx.strokeStyle='#f5cd48';ctx.lineWidth=1.5;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();ctx.setLineDash([]);handle.style.top=Math.max(top,Math.min(h-bottom,yy))+'px';handle.textContent='';handle.setAttribute('aria-label','停損 '+fmt(stopPrice)+'，上下拖曳調整');}
 
  const p=currentPrice();if(p!==null&&p>=lo&&p<=hi){ctx.strokeStyle='#7894b877';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(left,y(p));ctx.lineTo(w-right,y(p));ctx.stroke();ctx.setLineDash([]);}
- ctx.fillStyle='#8492a6';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='center';for(let n=start;n<end;n+=Math.max(1,Math.floor(count/4))){let b=vis.get(n);ctx.fillText(clock(b.t).slice(0,5),x(n),h-8)}let selected=selectedBar!==null?Math.max(start,Math.min(end-1,selectedBar)):end-1;
+ ctx.fillStyle='#8492a6';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='center';for(let n=start;n<end;n+=Math.max(1,Math.floor(count/4))){let b=vis.get(n);const label=clock(b.t).slice(0,5),half=ctx.measureText(label).width/2;ctx.fillText(label,chartFullscreen?Math.max(half,Math.min(w-half,x(n))):x(n),h-8)}let selected=selectedBar!==null?Math.max(start,Math.min(end-1,selectedBar)):end-1;
  $('legend').replaceChildren(...ma.filter(m=>m.on).map(m=>{let e=document.createElement('span');e.style.color=m.color;const v=maValue(selected,m.p);e.textContent='MA'+m.p+' '+(v===null?'—':fmt(v));return e}));const volume=drawVolume(bars.map((bar,i)=>({bar,x:x(start+i)})),volumeLayoutMap,dx);drawingMap={start,end,plotStart,dx,left,w,h,right,bottom,top,plotH,lo,hi,volume};renderHorizontalLines();}
 // Price annotations are shared by chart types and stored separately from orders.
 function horizontalKey(){return JSON.stringify([builtin?'builtin':demoMode?'demo':'csv',sourceName,selectedDay]);}
@@ -364,8 +364,8 @@ function intradayPoints(){
 }
 function drawIntraday(w,h){
  const points=intradayPoints(),handle=$('stopHandle');$('legend').replaceChildren();
- if(!points.length){drawVolume([],volumeLayout(w,h,8,42),1);handle.hidden=true;drawingMap=null;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('當日分時 · 按「播放」從開盤開始',w/2,h/2);return;}
- const left=8,right=42,top=chartFullscreen?12:20,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-left-right,plotH=Math.max(40,h-top-bottom);
+ if(!points.length){drawVolume([],volumeLayout(w,h,chartFullscreen?0:8,42),1);handle.hidden=true;drawingMap=null;ctx.fillStyle='#95a3b6';ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('當日分時 · 按「播放」從開盤開始',w/2,h/2);return;}
+ const left=chartFullscreen?0:8,right=42,top=chartFullscreen?12:20,volumeLayoutMap=volumeLayout(w,h,left,right),bottom=h-volumeLayoutMap.top+8,plotW=w-left-right,plotH=Math.max(40,h-top-bottom);
  const openingTime=points[0].t,lastTime=points[points.length-1].t;
  const count=wholeDayFit?Math.max(12,(lastTime-openingTime)/MIN+2):Math.max(12,Math.min(MAX_VISIBLE_BARS,viewCount));
  pan=Math.max(-(count-5),Math.min(pan,Math.max(0,(lastTime-openingTime)/MIN)));
@@ -393,7 +393,7 @@ function drawIntraday(w,h){
  ctx.font='10px -apple-system,sans-serif';ctx.lineWidth=1;
  for(let n=0;n<=4;n++){
   const yy=top+plotH*n/4;if(!chartFullscreen){ctx.strokeStyle='#1b2431';ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(w-right,yy);ctx.stroke();}
-  ctx.fillStyle='#92a0b3';ctx.textAlign='left';ctx.fillText(String(Math.round(hi-(hi-lo)*n/4)),w-right+3,yy+4,right-3);
+  ctx.fillStyle='#92a0b3';ctx.textAlign=chartFullscreen?'right':'left';ctx.fillText(String(Math.round(hi-(hi-lo)*n/4)),chartFullscreen?w:w-right+3,yy+4,right-3);
   const t=from+(to-from)*n/4;if(t>=openingTime&&t<=rows[dayEnd].t+MIN){ctx.textAlign=n===0?'left':n===4?'right':'center';ctx.fillText(clock(t).slice(0,5),x(t),h-7);}
  }
  ctx.save();ctx.beginPath();ctx.rect(left,top,plotW,plotH);ctx.clip();
