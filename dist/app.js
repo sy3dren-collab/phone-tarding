@@ -28,7 +28,7 @@ function fmt(n,d=1){
 }
 const money=n=>(n<0?'−$':n>0?'+$':'$')+fmt(Math.abs(n),0);
 const clock=t=>new Date(t).toISOString().slice(11,19);
-const barClock=t=>{const at=new Date(t),hour=at.getUTCHours();return (hour<12?'上午':'下午')+' '+(hour%12||12)+':'+String(at.getUTCMinutes()).padStart(2,'0')};
+const barClock=t=>{const at=new Date(t),hour=at.getUTCHours();return String(hour%12||12).padStart(2,'0')+':'+String(at.getUTCMinutes()).padStart(2,'0')};
 const bucket=(t,p=tf)=>{const at=new Date(t),m=at.getUTCHours()*60+at.getUTCMinutes(),a=m>=900?900:m>=525?525:0;return t-(m-a)%p*MIN};
 function notify(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2300)}
 function buildSeries(data,p){const bars=[],starts=[],ends=[],map=new Int32Array(data.length);data.forEach((r,i)=>{const k=bucket(r.t,p);let b=bars[bars.length-1];if(!b||b.t!==k){b={...r,t:k};bars.push(b);starts.push(i);ends.push(i)}else{b.h=Math.max(b.h,r.h);b.l=Math.min(b.l,r.l);b.c=r.c;b.v+=r.v;ends[ends.length-1]=i}map[i]=bars.length-1});const sums=[0];bars.forEach(b=>sums.push(sums[sums.length-1]+b.c));return{bars,starts,ends,map,sums}}
