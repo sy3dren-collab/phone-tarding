@@ -255,7 +255,7 @@ dialog{overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling
  body.chart-fullscreen .replay-controls{grid-column:1;grid-row:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;width:100%;gap:4px}
  body.chart-fullscreen .trade-controls{grid-column:4;grid-row:1;display:flex;gap:4px;width:clamp(68px,calc(12vw - 1.32px),104px)}
  body.chart-fullscreen .traderow button{flex:0 0 var(--fullscreen-key-width);min-height:44px;padding:3px;font-size:20px;gap:5px}
- body.chart-fullscreen #fullscreenNext{flex-basis:calc(var(--fullscreen-key-width) * 2)}
+ body.chart-fullscreen #fullscreenNext{flex-basis:var(--fullscreen-key-width)}
  body.chart-fullscreen .trade-controls button{flex:1 1 0;min-width:0}
  body.chart-fullscreen .traderow span{display:none}
  body.chart-fullscreen .traderow .fullscreen-period{display:flex;flex-basis:44px;font-size:12px;background:#18212e;border:1px solid var(--line);color:var(--muted)}
